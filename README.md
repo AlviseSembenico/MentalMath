@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Overview
 
-## Getting Started
+This repo is a Next.js 16 + React 19 starter configured with **NextAuth v5 (beta)** and **Google-only authentication**. Sessions are stateless JWTs, so no database is required until you're ready to add one.
 
-First, run the development server:
+## Setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Install dependencies (pnpm is the default):
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+   ```bash
+   pnpm install
+   ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+2. Create a Google OAuth Client ID (Web application) and add `http://localhost:3000/api/auth/callback/google` as an authorized redirect URI.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. Copy `env.example` to `.env.local` and fill in the credentials you just created:
 
-## Learn More
+   ```bash
+   cp env.example .env.local
+   # edit AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, AUTH_SECRET
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+   Generate a strong `AUTH_SECRET` value (for example `openssl rand -base64 32`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. Start the dev server:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   pnpm dev
+   ```
 
-## Deploy on Vercel
+5. Visit [http://localhost:3000](http://localhost:3000) and sign in with a Google account.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Product Surface
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Public homepage recreates the Zetamac-style sprint via `MathTrainer`, with custom timers, operator toggles, live stats, and run history.
+- Authenticated experiences use Google-only SSO; the homepage never requires a session, but you can sign in from the header for future gated features.
+
+## Auth Architecture
+
+- `auth.ts` defines the canonical NextAuth configuration and exports the `handlers`, `auth`, `signIn`, and `signOut` helpers.
+- `app/api/auth/[...nextauth]/route.ts` connects the NextAuth handlers to the App Router API layer.
+- `app/page.tsx` is a server component that renders the public trainer, reads the session via `auth()`, and uses server actions for sign-in/out so credentials never touch the client.
+
+Nothing else in the app stores user data; Google is the single source of truth for identity during beta.

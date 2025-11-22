@@ -1,0 +1,494 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+type Operation = "addition" | "subtraction" | "multiplication" | "division";
+
+type DifficultyId = "sparks" | "balanced" | "insane";
+
+type Problem = {
+  prompt: string;
+  answer: number;
+  operation: Operation;
+};
+
+type HistoryEntry = {
+  id: string;
+  duration: number;
+  correct: number;
+  attempted: number;
+  score: number;
+  accuracy: number;
+  pace: number;
+  createdAt: string;
+};
+
+const operationOptions: { id: Operation; label: string; symbol: string }[] = [
+  { id: "addition", label: "Addition", symbol: "+" },
+  { id: "subtraction", label: "Subtraction", symbol: "−" },
+  { id: "multiplication", label: "Multiplication", symbol: "×" },
+  { id: "division", label: "Division", symbol: "÷" },
+];
+
+const difficulties: {
+  id: DifficultyId;
+  label: string;
+  min: number;
+  max: number;
+  description: string;
+}[] = [
+  {
+    id: "sparks",
+    label: "Sparks",
+    min: 0,
+    max: 9,
+    description: "Single digits. Pure speed.",
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    min: 3,
+    max: 24,
+    description: "Like classic Zetamac rounds.",
+  },
+  {
+    id: "insane",
+    label: "Insane",
+    min: 10,
+    max: 99,
+    description: "Two-digit chaos, zero mercy.",
+  },
+];
+
+const durationPresets = [60, 90, 120];
+
+const randomInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[number]): Problem {
+  const operation = ops[Math.floor(Math.random() * ops.length)];
+  const a = randomInt(difficulty.min, difficulty.max);
+  const b = randomInt(difficulty.min, difficulty.max);
+
+  switch (operation) {
+    case "addition": {
+      return {
+        prompt: `${a} + ${b}`,
+        answer: a + b,
+        operation,
+      };
+    }
+    case "subtraction": {
+      const minuend = Math.max(a, b);
+      const subtrahend = Math.min(a, b);
+      return {
+        prompt: `${minuend} − ${subtrahend}`,
+        answer: minuend - subtrahend,
+        operation,
+      };
+    }
+    case "multiplication": {
+      return {
+        prompt: `${a} × ${b}`,
+        answer: a * b,
+        operation,
+      };
+    }
+    case "division": {
+      const divisor = Math.max(1, b);
+      const quotient = Math.max(1, a);
+      const dividend = divisor * quotient;
+      return {
+        prompt: `${dividend} ÷ ${divisor}`,
+        answer: quotient,
+        operation,
+      };
+    }
+    default:
+      return { prompt: "0 + 0", answer: 0, operation: "addition" };
+  }
+}
+
+export default function MathTrainer() {
+  const [duration, setDuration] = useState(120);
+  const [timeLeft, setTimeLeft] = useState(duration);
+  const [difficulty, setDifficulty] = useState<DifficultyId>("balanced");
+  const [activeOps, setActiveOps] = useState<Operation[]>(
+    operationOptions.map((op) => op.id),
+  );
+  const [problem, setProblem] = useState<Problem>(() =>
+    generateProblem(activeOps, difficulties[1]),
+  );
+  const [status, setStatus] = useState<"idle" | "running" | "finished">("idle");
+  const [attempted, setAttempted] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [value, setValue] = useState("");
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const currentDifficulty = useMemo(
+    () => difficulties.find((d) => d.id === difficulty) ?? difficulties[1],
+    [difficulty],
+  );
+
+  useEffect(() => {
+    if (status === "running") {
+      inputRef.current?.focus();
+    }
+  }, [status]);
+
+  const accuracy = attempted === 0 ? 0 : Math.round((correct / attempted) * 100);
+  const incorrect = attempted - correct;
+  const score = Math.max(0, correct * 4 - incorrect);
+  const pace =
+    duration === timeLeft
+      ? 0
+      : Math.round((correct / (duration - timeLeft)) * 60 * 10) / 10;
+
+  const finishRound = useCallback(() => {
+    setStatus("finished");
+    setHistory((prev) => [
+      {
+        id: crypto.randomUUID(),
+        duration,
+        correct,
+        attempted,
+        score,
+        accuracy,
+        pace: duration === 0 ? 0 : correct / (duration / 60),
+        createdAt: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
+  }, [accuracy, attempted, correct, duration, score]);
+
+  useEffect(() => {
+    if (status !== "running") return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          finishRound();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [finishRound, status]);
+
+  const startRound = () => {
+    setAttempted(0);
+    setCorrect(0);
+    setValue("");
+    setFeedback(null);
+    setTimeLeft(duration);
+    setProblem(generateProblem(activeOps, currentDifficulty));
+    setStatus("running");
+  };
+
+  const submitAnswer = (answer: number) => {
+    const isCorrect = answer === problem.answer;
+    setAttempted((prev) => prev + 1);
+    if (isCorrect) {
+      setCorrect((prev) => prev + 1);
+      setFeedback("correct");
+    } else {
+      setFeedback("wrong");
+    }
+
+    setProblem(generateProblem(activeOps, currentDifficulty));
+    setValue("");
+    inputRef.current?.focus();
+
+    if (!isCorrect) {
+      setTimeout(() => setFeedback(null), 400);
+    } else {
+      setTimeout(() => setFeedback(null), 250);
+    }
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!value.trim()) return;
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) return;
+    submitAnswer(parsed);
+  };
+
+  const handleDurationChange = (preset: number) => {
+    setDuration(preset);
+    if (status !== "running") {
+      setTimeLeft(preset);
+    }
+  };
+
+  const handleDifficultyChange = (id: DifficultyId) => {
+    setDifficulty(id);
+    if (status === "idle") {
+      const nextDifficulty = difficulties.find((diff) => diff.id === id) ?? currentDifficulty;
+      setProblem(generateProblem(activeOps, nextDifficulty));
+    }
+  };
+
+  const toggleOperation = (operation: Operation) => {
+    setActiveOps((prev) => {
+      if (prev.includes(operation)) {
+        if (prev.length === 1) return prev;
+        const updated = prev.filter((op) => op !== operation);
+        if (status === "idle") {
+          setProblem(generateProblem(updated, currentDifficulty));
+        }
+        return updated;
+      }
+      const extended = [...prev, operation];
+      if (status === "idle") {
+        setProblem(generateProblem(extended, currentDifficulty));
+      }
+      return extended;
+    });
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+      <section className="rounded-3xl border border-zinc-200 bg-white/70 p-8 shadow-lg shadow-zinc-500/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-500">
+              {status === "running" ? "Live round" : status === "finished" ? "Complete" : "Ready"}
+            </p>
+            <h2 className="text-3xl font-semibold text-zinc-900 dark:text-white">
+              Lightning arithmetic
+            </h2>
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white/70 px-4 py-2 text-sm font-semibold text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+            <span>{Math.floor(timeLeft / 60).toString().padStart(2, "0")}</span>
+            <span>:</span>
+            <span>{(timeLeft % 60).toString().padStart(2, "0")}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-8 dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
+          <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
+            <span>{currentDifficulty.label}</span>
+            <span>{operationOptions.filter((op) => activeOps.includes(op.id)).length} ops</span>
+          </div>
+
+          <div className="flex flex-col items-center gap-6 py-10">
+            <div
+              className={`text-5xl font-bold tracking-tight text-zinc-900 transition duration-150 dark:text-white ${
+                feedback === "correct"
+                  ? "scale-105 text-emerald-500"
+                  : feedback === "wrong"
+                    ? "scale-95 text-rose-500"
+                    : ""
+              }`}
+            >
+              {status === "idle" && "Press start"}
+              {status === "running" && problem.prompt}
+              {status === "finished" && "Time!"}
+            </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="flex w-full flex-col gap-4 text-center sm:flex-row"
+            >
+              <input
+                ref={inputRef}
+                type="number"
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder={status === "running" ? "Type answer" : "Get ready"}
+                disabled={status !== "running"}
+                inputMode="numeric"
+                className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-center text-2xl font-semibold text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+              />
+              <button
+                type="submit"
+                disabled={status !== "running"}
+                className="rounded-2xl bg-emerald-500 px-6 py-4 text-base font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Submit
+              </button>
+            </form>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-zinc-200 pt-6 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em]">Attempted</p>
+              <p className="text-xl font-semibold text-zinc-900 dark:text-white">{attempted}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em]">Correct</p>
+              <p className="text-xl font-semibold text-emerald-500">{correct}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em]">Accuracy</p>
+              <p className="text-xl font-semibold">{accuracy}%</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em]">Score</p>
+              <p className="text-xl font-semibold text-sky-500">{score}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em]">Pace</p>
+              <p className="text-xl font-semibold">{pace || 0} /min</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-4">
+          {status !== "running" ? (
+            <button
+              onClick={startRound}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-6 py-4 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black"
+            >
+              {status === "finished" ? "Run it back" : "Start round"}
+            </button>
+          ) : (
+            <button
+              onClick={finishRound}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-semibold text-zinc-900 transition hover:border-emerald-500 dark:border-zinc-700 dark:text-white"
+            >
+              End round
+            </button>
+          )}
+          {status !== "running" && (
+            <button
+              onClick={() => {
+                setAttempted(0);
+                setCorrect(0);
+                setValue("");
+                setTimeLeft(duration);
+                setStatus("idle");
+              }}
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 px-6 py-4 text-sm font-semibold text-emerald-600 transition hover:border-emerald-400"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
+          <p className="text-xs uppercase tracking-[0.4em] text-zinc-400">Routines</p>
+          <h3 className="pb-4 text-xl font-semibold text-zinc-900 dark:text-white">
+            Dial in your round
+          </h3>
+          <div className="space-y-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Duration</p>
+              <div className="mt-3 flex gap-2">
+                {durationPresets.map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => handleDurationChange(preset)}
+                    className={`flex-1 rounded-2xl border px-3 py-2 text-sm font-medium transition ${
+                      duration === preset
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-600"
+                        : "border-transparent bg-zinc-100 text-zinc-600 hover:border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
+                    }`}
+                  >
+                    {preset / 60} min
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Difficulty</p>
+              <div className="mt-3 grid gap-2">
+                {difficulties.map((diff) => (
+                  <button
+                    key={diff.id}
+                    onClick={() => handleDifficultyChange(diff.id)}
+                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                      diff.id === difficulty
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-semibold">{diff.label}</p>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">{diff.description}</p>
+                    </div>
+                    <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                      {diff.min}-{diff.max}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Operations</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {operationOptions.map((option) => {
+                  const isActive = activeOps.includes(option.id);
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => toggleOperation(option.id)}
+                      className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                        isActive
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-600"
+                          : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+                      }`}
+                    >
+                      <span className="text-lg">{option.symbol}</span> {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
+          <p className="text-xs uppercase tracking-[0.4em] text-zinc-400">History</p>
+          <h3 className="pb-4 text-xl font-semibold text-zinc-900 dark:text-white">
+            Recent rounds
+          </h3>
+          {history.length === 0 ? (
+            <p className="text-sm text-zinc-500">
+              Finish a run to see accuracy, score, and pace highlights.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {history.slice(0, 5).map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-2xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">
+                        {new Date(entry.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      <p className="text-base font-semibold text-zinc-900 dark:text-white">
+                        {entry.correct} / {entry.attempted} correct
+                      </p>
+                    </div>
+                    <div className="text-right text-xs">
+                      <p className="font-semibold text-emerald-600">{entry.score} pts</p>
+                      <p className="text-zinc-500">{Math.round(entry.pace)} /min</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Accuracy {entry.accuracy}% · {entry.duration}s
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
