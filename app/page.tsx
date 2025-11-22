@@ -1,6 +1,8 @@
 import { auth, signIn, signOut } from "@/auth";
-import MathTrainer from "@/components/math-trainer";
+
 import Image from "next/image";
+import MathTrainer from "@/components/math-trainer";
+import { postLogin } from "@/manage/login";
 
 export default async function Home() {
   const session = await auth();
@@ -56,6 +58,7 @@ export default async function Home() {
                 action={async () => {
                   "use server";
                   await signIn("google");
+                  await postLogin();
                 }}
               >
                 <button className="inline-flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white/80 px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm transition hover:border-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:hover:border-white">
@@ -67,7 +70,7 @@ export default async function Home() {
           </div>
         </header>
 
-        <section className="rounded-3xl border border-zinc-200/80 bg-white/80 p-8 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
+        {/* <section className="rounded-3xl border border-zinc-200/80 bg-white/80 p-8 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl space-y-4">
               <p className="text-xs uppercase tracking-[0.4em] text-sky-500">Open practice</p>
@@ -109,7 +112,7 @@ export default async function Home() {
               </div>
             </div>
           </div>
-        </section>
+        </section> */}
 
         <MathTrainer />
       </div>
