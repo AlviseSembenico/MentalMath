@@ -60,8 +60,6 @@ const difficulties: {
   },
 ];
 
-const durationPresets = [60, 90, 120];
-
 const randomInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -110,6 +108,8 @@ function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[num
 }
 
 export default function MathTrainer() {
+  const [durationMinutes, setDurationMinutes] = useState(2);
+  const [durationSeconds, setDurationSeconds] = useState(0);
   const [duration, setDuration] = useState(120);
   const [timeLeft, setTimeLeft] = useState(duration);
   const [difficulty, setDifficulty] = useState<DifficultyId>("balanced");
@@ -217,11 +217,24 @@ export default function MathTrainer() {
     submitAnswer(parsed);
   };
 
-  const handleDurationChange = (preset: number) => {
-    setDuration(preset);
+  const updateDuration = (minutes: number, seconds: number) => {
+    const totalSeconds = minutes * 60 + seconds;
+    setDuration(totalSeconds);
     if (status !== "running") {
-      setTimeLeft(preset);
+      setTimeLeft(totalSeconds);
     }
+  };
+
+  const handleMinutesChange = (value: string) => {
+    const minutes = Math.max(0, Math.floor(Number(value) || 0));
+    setDurationMinutes(minutes);
+    updateDuration(minutes, durationSeconds);
+  };
+
+  const handleSecondsChange = (value: string) => {
+    const seconds = Math.max(0, Math.min(59, Math.floor(Number(value) || 0)));
+    setDurationSeconds(seconds);
+    updateDuration(durationMinutes, seconds);
   };
 
   const handleDifficultyChange = (id: DifficultyId) => {
@@ -381,19 +394,33 @@ export default function MathTrainer() {
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Duration</p>
               <div className="mt-3 flex gap-2">
-                {durationPresets.map((preset) => (
-                  <button
-                    key={preset}
-                    onClick={() => handleDurationChange(preset)}
-                    className={`flex-1 rounded-2xl border px-3 py-2 text-sm font-medium transition ${
-                      duration === preset
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-600"
-                        : "border-transparent bg-zinc-100 text-zinc-600 hover:border-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
-                    }`}
-                  >
-                    {preset / 60} min
-                  </button>
-                ))}
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                    Minutes
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={durationMinutes}
+                    onChange={(e) => handleMinutesChange(e.target.value)}
+                    disabled={status === "running"}
+                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                    Seconds
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={durationSeconds}
+                    onChange={(e) => handleSecondsChange(e.target.value)}
+                    disabled={status === "running"}
+                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                  />
+                </div>
               </div>
             </div>
 
