@@ -412,11 +412,7 @@ export default function MathTrainer() {
     setValue("");
     inputRef.current?.focus();
 
-    if (!isCorrect) {
-      setTimeout(() => setFeedback(null), 400);
-    } else {
-      setTimeout(() => setFeedback(null), 250);
-    }
+    setTimeout(() => setFeedback(null), 500);
   };
 
   useEffect(() => {
@@ -645,7 +641,13 @@ export default function MathTrainer() {
                 placeholder={status === "running" ? "Type answer" : "Get ready"}
                 disabled={status !== "running"}
                 inputMode="numeric"
-                className="w-full rounded-2xl border border-zinc-300 bg-white px-5 py-4 text-center text-2xl font-semibold text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                className={`w-full rounded-2xl border px-5 py-4 text-center text-2xl font-semibold text-zinc-900 outline-none transition disabled:cursor-not-allowed disabled:opacity-50 dark:text-white ${
+                  feedback === "correct"
+                    ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-900/30"
+                    : feedback === "wrong"
+                      ? "border-rose-400 bg-rose-50 ring-2 ring-rose-300 dark:border-rose-500 dark:bg-rose-900/30"
+                      : "border-zinc-300 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-zinc-700 dark:bg-zinc-900"
+                }`}
               />
               <button
                 type="submit"
