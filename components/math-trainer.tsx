@@ -3,7 +3,7 @@
 import { fetchHistory, saveHistoryEntry } from "@/manage/history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type Operation = "addition" | "subtraction" | "multiplication" | "division";
+type Operation = "addition" | "subtraction" | "multiplication" | "division" | "square";
 
 type DifficultyId = "sparks" | "balanced" | "insane";
 
@@ -38,6 +38,7 @@ const operationOptions: { id: Operation; label: string; symbol: string }[] = [
   { id: "subtraction", label: "Subtraction", symbol: "−" },
   { id: "multiplication", label: "Multiplication", symbol: "×" },
   { id: "division", label: "Division", symbol: "÷" },
+  { id:'square', label: 'Square', symbol: '²'},
 ];
 
 const difficulties: {
@@ -109,6 +110,14 @@ function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[num
       return {
         prompt: `${dividend} ÷ ${divisor}`,
         answer: quotient,
+        operation,
+      };
+    }
+    case "square": {
+      const base = a;
+      return {
+        prompt: `${base}²`,
+        answer: base * base,
         operation,
       };
     }

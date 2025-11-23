@@ -73,49 +73,6 @@ export default async function Home() {
           </div>
         </header>
 
-        {/* <section className="rounded-3xl border border-zinc-200/80 bg-white/80 p-8 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl space-y-4">
-              <p className="text-xs uppercase tracking-[0.4em] text-sky-500">Open practice</p>
-              <h2 className="text-4xl font-semibold leading-tight text-zinc-900 dark:text-white">
-                Zetamac speed drills, but calmer visuals and richer stats.
-              </h2>
-              <p className="text-base text-zinc-600 dark:text-zinc-300">
-                Pick your operators, choose a timer, then race through clean, legible prompts. We
-                track accuracy, custom scoring, and pace so you know exactly when to flex or reset.
-              </p>
-              <ul className="flex flex-wrap gap-3 text-sm text-zinc-600 dark:text-zinc-400">
-                <li className="rounded-full border border-zinc-200 px-4 py-2 dark:border-zinc-700">
-                  Live scoreboard
-                </li>
-                <li className="rounded-full border border-zinc-200 px-4 py-2 dark:border-zinc-700">
-                  Custom routines
-                </li>
-                <li className="rounded-full border border-zinc-200 px-4 py-2 dark:border-zinc-700">
-                  Recent history
-                </li>
-              </ul>
-            </div>
-            <div className="grid gap-4 text-sm text-zinc-600 dark:text-zinc-300 sm:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
-                <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Mode</p>
-                <p className="text-lg font-semibold text-zinc-900 dark:text-white">Timer sprint</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
-                <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Best pace</p>
-                <p className="text-lg font-semibold text-emerald-500">40 / min</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
-                <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Max score</p>
-                <p className="text-lg font-semibold text-sky-500">200 pts</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/70">
-                <p className="text-xs uppercase tracking-[0.3em] text-zinc-400">Active ops</p>
-                <p className="text-lg font-semibold text-zinc-900 dark:text-white">+ − × ÷</p>
-              </div>
-            </div>
-          </div>
-        </section> */}
 
         <MathTrainer />
       </div>
