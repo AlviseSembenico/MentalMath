@@ -346,6 +346,18 @@ export default function MathTrainer() {
     setStatus("running");
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Enter" && status !== "running") {
+        event.preventDefault();
+        startRound();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [status, startRound]);
+
   const cancelRound = () => {
     hasFinishedRef.current = false;
     setAttempted(0);
@@ -392,6 +404,60 @@ export default function MathTrainer() {
       setTimeout(() => setFeedback(null), 250);
     }
   };
+
+  useEffect(() => {
+    if (status !== "running") return;
+
+    const keyMap: Record<string, string> = {
+      i: "7",
+      o: "8",
+      p: "9",
+      j: "0",
+      k: "4",
+      l: "5",
+      ";": "6",
+      m: "1",
+      ".": "2",
+      "/": "3",
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.tagName === "INPUT" && target !== inputRef.current) {
+        return;
+      }
+
+      const mappedKey = keyMap[event.key.toLowerCase()];
+      if (mappedKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        setValue((prev) => prev + mappedKey);
+        return;
+      }
+
+      if (event.key === "Backspace" && target !== inputRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        setValue((prev) => prev.slice(0, -1));
+        return;
+      }
+
+      if (event.key === "Enter" && target !== inputRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (value.trim()) {
+          const parsed = Number(value);
+          if (!Number.isNaN(parsed)) {
+            submitAnswer(parsed);
+          }
+        }
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [status, value, submitAnswer]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
