@@ -42,6 +42,7 @@ export async function fetchHistory() {
             userAnswer: attempt.userAnswer,
             operation: attempt.operation,
             isCorrect: attempt.isCorrect,
+            timeTaken: attempt.timeTaken,
         })),
         createdAt: entry.createdAt.toISOString(),
     }));
@@ -62,6 +63,7 @@ export async function saveHistoryEntry(data: {
         userAnswer: number;
         operation: string;
         isCorrect: boolean;
+        timeTaken: number;
     }>;
 }) {
     const session = await auth();
@@ -91,6 +93,7 @@ export async function saveHistoryEntry(data: {
                     userAnswer: attempt.userAnswer,
                     operation: attempt.operation,
                     isCorrect: attempt.isCorrect,
+                    timeTaken: attempt.timeTaken,
                 })),
             },
         },
@@ -115,6 +118,7 @@ export async function saveHistoryEntry(data: {
             userAnswer: attempt.userAnswer,
             operation: attempt.operation,
             isCorrect: attempt.isCorrect,
+            timeTaken: attempt.timeTaken,
         })),
         createdAt: historyEntry.createdAt.toISOString(),
     };

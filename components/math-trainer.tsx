@@ -29,6 +29,7 @@ type HistoryEntry = {
     userAnswer: number;
     operation: string;
     isCorrect: boolean;
+    timeTaken: number;
   }>;
   createdAt: string;
 };
@@ -214,6 +215,7 @@ export default function MathTrainer() {
     userAnswer: number;
     operation: Operation;
     isCorrect: boolean;
+    timeTaken: number;
   }>>([]);
   const [activeTab, setActiveTab] = useState<"operations" | "working-memory">("operations");
   const [workingMemoryOps, setWorkingMemoryOps] = useState(2);
@@ -227,6 +229,7 @@ export default function MathTrainer() {
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const hasFinishedRef = useRef(false);
+  const problemStartTimeRef = useRef<number | null>(null);
   const currentDifficulty = useMemo(
     () => difficulties.find((d) => d.id === difficulty) ?? difficulties[1],
     [difficulty],
@@ -247,6 +250,12 @@ export default function MathTrainer() {
       );
     }
   }, [activeTab, workingMemoryOps, currentDifficulty, activeOps, status]);
+
+  useEffect(() => {
+    if (status === "running" && problem) {
+      problemStartTimeRef.current = Date.now();
+    }
+  }, [status, problem]);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -304,6 +313,7 @@ export default function MathTrainer() {
           userAnswer: attempt.userAnswer,
           operation: attempt.operation,
           isCorrect: attempt.isCorrect,
+          timeTaken: attempt.timeTaken,
         })),
       },
       ...prev,
@@ -352,12 +362,12 @@ export default function MathTrainer() {
     setFeedback(null);
     setProblemAttempts([]);
     setTimeLeft(duration);
-    setProblem(
-      activeTab === "working-memory"
-        ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
-        : generateProblem(activeOps, currentDifficulty),
-    );
+    const newProblem = activeTab === "working-memory"
+      ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
+      : generateProblem(activeOps, currentDifficulty);
+    setProblem(newProblem);
     setStatus("running");
+    problemStartTimeRef.current = Date.now();
   };
 
   useEffect(() => {
@@ -393,6 +403,10 @@ export default function MathTrainer() {
       setFeedback("wrong");
     }
 
+    const timeTaken = problemStartTimeRef.current 
+      ? Math.round((Date.now() - problemStartTimeRef.current) / 1000)
+      : 0;
+
     setProblemAttempts((prev) => [
       ...prev,
       {
@@ -401,6 +415,7 @@ export default function MathTrainer() {
         userAnswer: answer,
         operation: problem.operation,
         isCorrect,
+        timeTaken,
       },
     ]);
 
@@ -411,6 +426,7 @@ export default function MathTrainer() {
     );
     setValue("");
     inputRef.current?.focus();
+    problemStartTimeRef.current = Date.now();
 
     setTimeout(() => setFeedback(null), 500);
   };
