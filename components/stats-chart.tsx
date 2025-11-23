@@ -81,8 +81,8 @@ export default function StatsChart({ data }: Props) {
               padding: "8px 12px",
             }}
             labelStyle={{ color: "#18181b", fontWeight: 600 }}
-            formatter={(value: number | null) => {
-              if (value === null || value === undefined) return "N/A";
+            formatter={(value: any) => {
+              if (value === null || value === undefined || typeof value !== "number") return "N/A";
               return `${value.toFixed(1)}s`;
             }}
           />
