@@ -217,6 +217,7 @@ export default function MathTrainer() {
   }>>([]);
   const [activeTab, setActiveTab] = useState<"operations" | "working-memory">("operations");
   const [workingMemoryOps, setWorkingMemoryOps] = useState(2);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasFinishedRef = useRef(false);
   const currentDifficulty = useMemo(
@@ -518,8 +519,36 @@ export default function MathTrainer() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-      <section className="rounded-3xl border border-zinc-200 bg-white/70 p-8 shadow-lg shadow-zinc-500/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
+    <div className="space-y-6">
+      {showAdvancedOptions && (
+        <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white">
+              Advanced Options
+            </h2>
+            <button
+              onClick={() => setShowAdvancedOptions(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+              aria-label="Close advanced options"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+        <section className="rounded-3xl border border-zinc-200 bg-white/70 p-8 shadow-lg shadow-zinc-500/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
         <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-emerald-500">
@@ -778,6 +807,15 @@ export default function MathTrainer() {
                 </div>
               )}
             </div>
+
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+              <button
+                onClick={() => setShowAdvancedOptions(true)}
+                className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                Advanced Options
+              </button>
+            </div>
           </div>
         </div>
 
@@ -823,6 +861,7 @@ export default function MathTrainer() {
           )}
         </div>
       </section>
+      </div>
     </div>
   );
 }
