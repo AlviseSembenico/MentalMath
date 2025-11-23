@@ -417,8 +417,8 @@ export default function MathTrainer() {
       l: "5",
       ";": "6",
       m: "1",
-      ".": "2",
-      "/": "3",
+      ",": "2",
+      ".": "3",
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
