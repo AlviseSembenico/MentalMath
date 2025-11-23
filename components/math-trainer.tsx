@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchHistory, saveHistoryEntry } from "@/manage/history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Operation = "addition" | "subtraction" | "multiplication" | "division";
@@ -13,7 +14,7 @@ type Problem = {
 };
 
 type HistoryEntry = {
-  id: string;
+  id: number;
   duration: number;
   correct: number;
   attempted: number;
@@ -126,6 +127,7 @@ export default function MathTrainer() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasFinishedRef = useRef(false);
   const currentDifficulty = useMemo(
     () => difficulties.find((d) => d.id === difficulty) ?? difficulties[1],
     [difficulty],
@@ -137,6 +139,18 @@ export default function MathTrainer() {
     }
   }, [status]);
 
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const data = await fetchHistory();
+        setHistory(data);
+      } catch (error) {
+        // User might not be logged in, silently fail
+      }
+    };
+    loadHistory();
+  }, []);
+
   const accuracy = attempted === 0 ? 0 : Math.round((correct / attempted) * 100);
   const incorrect = attempted - correct;
   const score = Math.max(0, correct * 4 - incorrect);
@@ -145,22 +159,43 @@ export default function MathTrainer() {
       ? 0
       : Math.round((correct / (duration - timeLeft)) * 60 * 10) / 10;
 
-  const finishRound = useCallback(() => {
+  const finishRound = useCallback(async () => {
+    if (status === "finished" || hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
     setStatus("finished");
+    const finalPace = duration === 0 ? 0 : correct / (duration / 60);
+    const tempId = Date.now();
+    const newEntry = {
+      duration,
+      correct,
+      attempted,
+      score,
+      accuracy,
+      pace: finalPace,
+      createdAt: new Date().toISOString(),
+    };
+
     setHistory((prev) => [
       {
-        id: crypto.randomUUID(),
-        duration,
-        correct,
-        attempted,
-        score,
-        accuracy,
-        pace: duration === 0 ? 0 : correct / (duration / 60),
-        createdAt: new Date().toISOString(),
+        id: tempId,
+        ...newEntry,
       },
       ...prev,
     ]);
-  }, [accuracy, attempted, correct, duration, score]);
+
+    try {
+      const savedEntry = await saveHistoryEntry(newEntry);
+      if (savedEntry) {
+        setHistory((prev) =>
+          prev.map((entry) =>
+            entry.id === tempId ? savedEntry : entry,
+          ),
+        );
+      }
+    } catch (error) {
+      // User might not be logged in, silently fail
+    }
+  }, [accuracy, attempted, correct, duration, score, status]);
 
   useEffect(() => {
     if (status !== "running") return;
@@ -168,7 +203,6 @@ export default function MathTrainer() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          finishRound();
           return 0;
         }
         return prev - 1;
@@ -176,9 +210,16 @@ export default function MathTrainer() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [finishRound, status]);
+  }, [status]);
+
+  useEffect(() => {
+    if (status === "running" && timeLeft === 0) {
+      finishRound();
+    }
+  }, [timeLeft, status, finishRound]);
 
   const startRound = () => {
+    hasFinishedRef.current = false;
     setAttempted(0);
     setCorrect(0);
     setValue("");
@@ -370,6 +411,7 @@ export default function MathTrainer() {
           {status !== "running" && (
             <button
               onClick={() => {
+                hasFinishedRef.current = false;
                 setAttempted(0);
                 setCorrect(0);
                 setValue("");
@@ -386,10 +428,6 @@ export default function MathTrainer() {
 
       <section className="space-y-6">
         <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="text-xs uppercase tracking-[0.4em] text-zinc-400">Routines</p>
-          <h3 className="pb-4 text-xl font-semibold text-zinc-900 dark:text-white">
-            Dial in your round
-          </h3>
           <div className="space-y-5">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Duration</p>

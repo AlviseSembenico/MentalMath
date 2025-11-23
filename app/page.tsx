@@ -6,6 +6,10 @@ import { postLogin } from "@/manage/login";
 
 export default async function Home() {
   const session = await auth();
+  
+  if (session?.user) {
+    await postLogin();
+  }
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#e0f7fa,_#f5f5f5_35%,_#fdfbf7)] pb-16 pt-10 dark:bg-[radial-gradient(circle_at_top,_#0f172a,_#020617_60%)]">
@@ -58,7 +62,6 @@ export default async function Home() {
                 action={async () => {
                   "use server";
                   await signIn("google");
-                  await postLogin();
                 }}
               >
                 <button className="inline-flex items-center gap-3 rounded-2xl border border-zinc-300 bg-white/80 px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm transition hover:border-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:hover:border-white">

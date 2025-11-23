@@ -13,6 +13,7 @@ export async function fetchUser(email: string) {
 
 export async function postLogin() {
     const session = await auth();
+    console.log(session);
     if (!session?.user) return;
     if (!session.user.email) return;
     const user = await fetchUser(session.user.email);
