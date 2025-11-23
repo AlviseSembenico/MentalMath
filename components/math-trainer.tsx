@@ -74,6 +74,57 @@ const difficulties: {
 const randomInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
+type Expression = {
+  value: number;
+  string: string;
+};
+
+function generateExpression(
+  numOps: number,
+  difficulty: (typeof difficulties)[number],
+): Expression {
+  if (numOps === 0) {
+    const num = randomInt(difficulty.min, difficulty.max);
+    return { value: num, string: num.toString() };
+  }
+
+  const ops: Operation[] = ["addition", "subtraction", "multiplication"];
+  const operation = ops[Math.floor(Math.random() * ops.length)];
+  const leftOps = Math.floor(Math.random() * numOps);
+  const rightOps = numOps - 1 - leftOps;
+
+  const left = generateExpression(leftOps, difficulty);
+  const right = generateExpression(rightOps, difficulty);
+
+  switch (operation) {
+    case "addition": {
+      return {
+        value: left.value + right.value,
+        string: `(${left.string} + ${right.string})`,
+      };
+    }
+    case "subtraction": {
+      let leftExpr = left;
+      let rightExpr = right;
+      if (left.value < right.value) {
+        [leftExpr, rightExpr] = [right, left];
+      }
+      return {
+        value: leftExpr.value - rightExpr.value,
+        string: `(${leftExpr.string} − ${rightExpr.string})`,
+      };
+    }
+    case "multiplication": {
+      return {
+        value: left.value * right.value,
+        string: `(${left.string} × ${right.string})`,
+      };
+    }
+    default:
+      return { value: 0, string: "0" };
+  }
+}
+
 function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[number]): Problem {
   const operation = ops[Math.floor(Math.random() * ops.length)];
   const a = randomInt(difficulty.min, difficulty.max);
@@ -126,6 +177,19 @@ function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[num
   }
 }
 
+function generateWorkingMemoryProblem(
+  numOps: number,
+  difficulty: (typeof difficulties)[number],
+): Problem {
+  const expression = generateExpression(numOps, difficulty);
+  expression.string = expression.string.slice(1, -1);
+  return {
+    prompt: expression.string,
+    answer: expression.value,
+    operation: "addition",
+  };
+}
+
 export default function MathTrainer() {
   const [durationMinutes, setDurationMinutes] = useState(2);
   const [durationSeconds, setDurationSeconds] = useState(0);
@@ -151,6 +215,8 @@ export default function MathTrainer() {
     operation: Operation;
     isCorrect: boolean;
   }>>([]);
+  const [activeTab, setActiveTab] = useState<"operations" | "working-memory">("operations");
+  const [workingMemoryOps, setWorkingMemoryOps] = useState(2);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasFinishedRef = useRef(false);
   const currentDifficulty = useMemo(
@@ -163,6 +229,16 @@ export default function MathTrainer() {
       inputRef.current?.focus();
     }
   }, [status]);
+
+  useEffect(() => {
+    if (status === "idle") {
+      setProblem(
+        activeTab === "working-memory"
+          ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
+          : generateProblem(activeOps, currentDifficulty),
+      );
+    }
+  }, [activeTab, workingMemoryOps, currentDifficulty, activeOps, status]);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -262,7 +338,11 @@ export default function MathTrainer() {
     setFeedback(null);
     setProblemAttempts([]);
     setTimeLeft(duration);
-    setProblem(generateProblem(activeOps, currentDifficulty));
+    setProblem(
+      activeTab === "working-memory"
+        ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
+        : generateProblem(activeOps, currentDifficulty),
+    );
     setStatus("running");
   };
 
@@ -298,7 +378,11 @@ export default function MathTrainer() {
       },
     ]);
 
-    setProblem(generateProblem(activeOps, currentDifficulty));
+    setProblem(
+      activeTab === "working-memory"
+        ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
+        : generateProblem(activeOps, currentDifficulty),
+    );
     setValue("");
     inputRef.current?.focus();
 
@@ -341,7 +425,11 @@ export default function MathTrainer() {
     setDifficulty(id);
     if (status === "idle") {
       const nextDifficulty = difficulties.find((diff) => diff.id === id) ?? currentDifficulty;
-      setProblem(generateProblem(activeOps, nextDifficulty));
+      setProblem(
+        activeTab === "working-memory"
+          ? generateWorkingMemoryProblem(workingMemoryOps, nextDifficulty)
+          : generateProblem(activeOps, nextDifficulty),
+      );
     }
   };
 
@@ -385,7 +473,11 @@ export default function MathTrainer() {
         <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-8 dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
           <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
             <span>{currentDifficulty.label}</span>
-            <span>{operationOptions.filter((op) => activeOps.includes(op.id)).length} ops</span>
+            <span>
+              {activeTab === "working-memory"
+                ? `${workingMemoryOps} ops`
+                : `${operationOptions.filter((op) => activeOps.includes(op.id)).length} ops`}
+            </span>
           </div>
 
           <div className="flex flex-col items-center gap-6 py-10">
@@ -555,25 +647,70 @@ export default function MathTrainer() {
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Operations</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {operationOptions.map((option) => {
-                  const isActive = activeOps.includes(option.id);
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => toggleOperation(option.id)}
-                      className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
-                        isActive
-                          ? "border-emerald-500 bg-emerald-50 text-emerald-600"
-                          : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
-                      }`}
-                    >
-                      <span className="text-lg">{option.symbol}</span> {option.label}
-                    </button>
-                  );
-                })}
+              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500 mb-3">Section</p>
+              <div className="flex gap-2 mb-3">
+                <button
+                  onClick={() => setActiveTab("operations")}
+                  className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                    activeTab === "operations"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                  }`}
+                >
+                  Operations
+                </button>
+                <button
+                  onClick={() => setActiveTab("working-memory")}
+                  className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                    activeTab === "working-memory"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                  }`}
+                >
+                  Working Memory
+                </button>
               </div>
+              {activeTab === "operations" && (
+                <div className="grid grid-cols-2 gap-2">
+                  {operationOptions.map((option) => {
+                    const isActive = activeOps.includes(option.id);
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => toggleOperation(option.id)}
+                        className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+                          isActive
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-600"
+                            : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+                        }`}
+                      >
+                        <span className="text-lg">{option.symbol}</span> {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {activeTab === "working-memory" && (
+                <div>
+                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                    Number of operations
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={workingMemoryOps}
+                    onChange={(e) => {
+                      const val = Math.max(1, Math.floor(Number(e.target.value) || 1));
+                      setWorkingMemoryOps(val);
+                      if (status === "idle") {
+                        setProblem(generateWorkingMemoryProblem(val, currentDifficulty));
+                      }
+                    }}
+                    disabled={status === "running"}
+                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
