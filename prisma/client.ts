@@ -5,7 +5,7 @@ import { Prisma, PrismaClient } from "../app/generated/prisma/client";
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
 
-const connectionString = process.env.POSTGRES_PRISMA_URL || '';
+const connectionString = process.env.POSTGRES_PRISMA_URL_UNSAFE || '';
 
 const pool = new Pool({
     connectionString,
