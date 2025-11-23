@@ -229,6 +229,16 @@ export default function MathTrainer() {
     setStatus("running");
   };
 
+  const cancelRound = () => {
+    hasFinishedRef.current = false;
+    setAttempted(0);
+    setCorrect(0);
+    setValue("");
+    setFeedback(null);
+    setTimeLeft(duration);
+    setStatus("idle");
+  };
+
   const submitAnswer = (answer: number) => {
     const isCorrect = answer === problem.answer;
     setAttempted((prev) => prev + 1);
@@ -401,12 +411,20 @@ export default function MathTrainer() {
               {status === "finished" ? "Run it back" : "Start round"}
             </button>
           ) : (
-            <button
-              onClick={finishRound}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-semibold text-zinc-900 transition hover:border-emerald-500 dark:border-zinc-700 dark:text-white"
-            >
-              End round
-            </button>
+            <>
+              <button
+                onClick={finishRound}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-semibold text-zinc-900 transition hover:border-emerald-500 dark:border-zinc-700 dark:text-white"
+              >
+                End round
+              </button>
+              <button
+                onClick={cancelRound}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 px-6 py-4 text-sm font-semibold text-rose-600 transition hover:border-rose-400 dark:border-rose-700 dark:text-rose-400"
+              >
+                Cancel
+              </button>
+            </>
           )}
           {status !== "running" && (
             <button
