@@ -10,6 +10,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("POSTGRES_PRISMA_URL"),
+    url: env("POSTGRES_PRISMA_URL_UNSAFE_MANAGE"),
   },
 });

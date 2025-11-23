@@ -22,14 +22,29 @@ model User {
 }
 
 model History {
+  id           Int              @id @default(autoincrement())
+  userId       Int
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  duration     Int
+  timeTaken    Int              @default(0)
+  operations   String[]         @default([])
+  correct      Int
+  attempted    Int
+  score        Int
+  accuracy     Int
+  pace         Float
+  problemAttempts ProblemAttempt[]
+  createdAt    DateTime         @default(now())
+}
+
+model ProblemAttempt {
   id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  duration  Int
-  correct   Int
-  attempted Int
-  score     Int
-  accuracy  Int
-  pace      Float
+  historyId Int
+  history   History  @relation(fields: [historyId], references: [id], onDelete: Cascade)
+  prompt    String
+  answer    Int
+  userAnswer Int
+  operation String
+  isCorrect Boolean
   createdAt DateTime @default(now())
 }

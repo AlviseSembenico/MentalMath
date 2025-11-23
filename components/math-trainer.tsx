@@ -16,11 +16,20 @@ type Problem = {
 type HistoryEntry = {
   id: number;
   duration: number;
+  timeTaken: number;
+  operations: string[];
   correct: number;
   attempted: number;
   score: number;
   accuracy: number;
   pace: number;
+  problemAttempts: Array<{
+    prompt: string;
+    answer: number;
+    userAnswer: number;
+    operation: string;
+    isCorrect: boolean;
+  }>;
   createdAt: string;
 };
 
@@ -126,6 +135,13 @@ export default function MathTrainer() {
   const [value, setValue] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [problemAttempts, setProblemAttempts] = useState<Array<{
+    prompt: string;
+    answer: number;
+    userAnswer: number;
+    operation: Operation;
+    isCorrect: boolean;
+  }>>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasFinishedRef = useRef(false);
   const currentDifficulty = useMemo(
@@ -163,15 +179,19 @@ export default function MathTrainer() {
     if (status === "finished" || hasFinishedRef.current) return;
     hasFinishedRef.current = true;
     setStatus("finished");
+    const timeTaken = duration - timeLeft;
     const finalPace = duration === 0 ? 0 : correct / (duration / 60);
     const tempId = Date.now();
     const newEntry = {
       duration,
+      timeTaken,
+      operations: activeOps,
       correct,
       attempted,
       score,
       accuracy,
       pace: finalPace,
+      problemAttempts,
       createdAt: new Date().toISOString(),
     };
 
@@ -179,6 +199,13 @@ export default function MathTrainer() {
       {
         id: tempId,
         ...newEntry,
+        problemAttempts: problemAttempts.map((attempt) => ({
+          prompt: attempt.prompt,
+          answer: attempt.answer,
+          userAnswer: attempt.userAnswer,
+          operation: attempt.operation,
+          isCorrect: attempt.isCorrect,
+        })),
       },
       ...prev,
     ]);
@@ -195,7 +222,7 @@ export default function MathTrainer() {
     } catch (error) {
       // User might not be logged in, silently fail
     }
-  }, [accuracy, attempted, correct, duration, score, status]);
+  }, [accuracy, attempted, correct, duration, score, status, timeLeft, activeOps, problemAttempts]);
 
   useEffect(() => {
     if (status !== "running") return;
@@ -224,6 +251,7 @@ export default function MathTrainer() {
     setCorrect(0);
     setValue("");
     setFeedback(null);
+    setProblemAttempts([]);
     setTimeLeft(duration);
     setProblem(generateProblem(activeOps, currentDifficulty));
     setStatus("running");
@@ -235,6 +263,7 @@ export default function MathTrainer() {
     setCorrect(0);
     setValue("");
     setFeedback(null);
+    setProblemAttempts([]);
     setTimeLeft(duration);
     setStatus("idle");
   };
@@ -248,6 +277,17 @@ export default function MathTrainer() {
     } else {
       setFeedback("wrong");
     }
+
+    setProblemAttempts((prev) => [
+      ...prev,
+      {
+        prompt: problem.prompt,
+        answer: problem.answer,
+        userAnswer: answer,
+        operation: problem.operation,
+        isCorrect,
+      },
+    ]);
 
     setProblem(generateProblem(activeOps, currentDifficulty));
     setValue("");
