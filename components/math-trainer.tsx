@@ -218,6 +218,13 @@ export default function MathTrainer() {
   const [activeTab, setActiveTab] = useState<"operations" | "working-memory">("operations");
   const [workingMemoryOps, setWorkingMemoryOps] = useState(2);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [autoSubmit, setAutoSubmit] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("mathTrainer_autoSubmit");
+      return saved === "true";
+    }
+    return false;
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const hasFinishedRef = useRef(false);
   const currentDifficulty = useMemo(
@@ -252,6 +259,12 @@ export default function MathTrainer() {
     };
     loadHistory();
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mathTrainer_autoSubmit", String(autoSubmit));
+    }
+  }, [autoSubmit]);
 
   const accuracy = attempted === 0 ? 0 : Math.round((correct / attempted) * 100);
   const incorrect = attempted - correct;
@@ -522,7 +535,7 @@ export default function MathTrainer() {
     <div className="space-y-6">
       {showAdvancedOptions && (
         <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white">
               Advanced Options
             </h2>
@@ -544,6 +557,22 @@ export default function MathTrainer() {
                 />
               </svg>
             </button>
+          </div>
+          <div className="space-y-4">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={autoSubmit}
+                onChange={(e) => setAutoSubmit(e.target.checked)}
+                className="h-5 w-5 rounded border-2 border-zinc-300 text-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:ring-offset-0 dark:border-zinc-600"
+              />
+              <div>
+                <p className="font-semibold text-zinc-900 dark:text-white">Auto Submit</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Automatically accept the answer when it's correct
+                </p>
+              </div>
+            </label>
           </div>
         </div>
       )}
@@ -598,7 +627,21 @@ export default function MathTrainer() {
                 ref={inputRef}
                 type="number"
                 value={value}
-                onChange={(event) => setValue(event.target.value)}
+                onChange={(event) => {
+                  const newValue = event.target.value;
+                  setValue(newValue);
+                  if (
+                    autoSubmit &&
+                    status === "running" &&
+                    newValue.trim() !== "" &&
+                    !Number.isNaN(Number(newValue))
+                  ) {
+                    const parsed = Number(newValue);
+                    if (parsed === problem.answer) {
+                      submitAnswer(parsed);
+                    }
+                  }
+                }}
                 placeholder={status === "running" ? "Type answer" : "Get ready"}
                 disabled={status !== "running"}
                 inputMode="numeric"
