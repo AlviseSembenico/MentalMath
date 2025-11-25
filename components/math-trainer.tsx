@@ -431,6 +431,20 @@ export default function MathTrainer() {
     setTimeout(() => setFeedback(null), 500);
   };
 
+  const checkAutoSubmit = useCallback((newValue: string) => {
+    if (
+      autoSubmit &&
+      status === "running" &&
+      newValue.trim() !== "" &&
+      !Number.isNaN(Number(newValue))
+    ) {
+      const parsed = Number(newValue);
+      if (parsed === problem.answer) {
+        submitAnswer(parsed);
+      }
+    }
+  }, [autoSubmit, status, problem, submitAnswer]);
+
   useEffect(() => {
     if (status !== "running") return;
 
@@ -457,7 +471,9 @@ export default function MathTrainer() {
       if (mappedKey) {
         event.preventDefault();
         event.stopPropagation();
-        setValue((prev) => prev + mappedKey);
+        const newValue = value + mappedKey;
+        setValue(newValue);
+        checkAutoSubmit(newValue);
         return;
       }
 
@@ -483,7 +499,7 @@ export default function MathTrainer() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [status, value, submitAnswer]);
+  }, [status, value, submitAnswer, checkAutoSubmit]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -642,17 +658,7 @@ export default function MathTrainer() {
                 onChange={(event) => {
                   const newValue = event.target.value;
                   setValue(newValue);
-                  if (
-                    autoSubmit &&
-                    status === "running" &&
-                    newValue.trim() !== "" &&
-                    !Number.isNaN(Number(newValue))
-                  ) {
-                    const parsed = Number(newValue);
-                    if (parsed === problem.answer) {
-                      submitAnswer(parsed);
-                    }
-                  }
+                  checkAutoSubmit(newValue);
                 }}
                 placeholder={status === "running" ? "Type answer" : "Get ready"}
                 disabled={status !== "running"}
