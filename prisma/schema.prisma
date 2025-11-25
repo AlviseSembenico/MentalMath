@@ -27,6 +27,7 @@ model History {
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   duration     Int
   timeTaken    Int              @default(0)
+  difficulty   String           @default("balanced")
   operations   String[]         @default([])
   correct      Int
   attempted    Int

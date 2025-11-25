@@ -3,6 +3,8 @@
 import { auth } from "@/auth";
 import { prisma } from "../prisma/client";
 
+type DifficultyId = "sparks" | "balanced" | "insane";
+
 export async function fetchHistory() {
     const session = await auth();
     if (!session?.user?.email) return [];
@@ -30,6 +32,7 @@ export async function fetchHistory() {
         id: entry.id,
         duration: entry.duration,
         timeTaken: entry.timeTaken,
+        difficulty: (entry.difficulty as DifficultyId) ?? "balanced",
         operations: entry.operations,
         correct: entry.correct,
         attempted: entry.attempted,
@@ -51,6 +54,7 @@ export async function fetchHistory() {
 export async function saveHistoryEntry(data: {
     duration: number;
     timeTaken: number;
+    difficulty: DifficultyId;
     operations: string[];
     correct: number;
     attempted: number;
@@ -80,6 +84,7 @@ export async function saveHistoryEntry(data: {
             userId: user.id,
             duration: data.duration,
             timeTaken: data.timeTaken,
+            difficulty: data.difficulty,
             operations: data.operations,
             correct: data.correct,
             attempted: data.attempted,
@@ -106,6 +111,7 @@ export async function saveHistoryEntry(data: {
         id: historyEntry.id,
         duration: historyEntry.duration,
         timeTaken: historyEntry.timeTaken,
+        difficulty: (historyEntry.difficulty as DifficultyId) ?? "balanced",
         operations: historyEntry.operations,
         correct: historyEntry.correct,
         attempted: historyEntry.attempted,

@@ -17,6 +17,7 @@ type HistoryEntry = {
   id: number;
   duration: number;
   timeTaken: number;
+  difficulty: DifficultyId;
   operations: string[];
   correct: number;
   attempted: number;
@@ -300,6 +301,7 @@ export default function MathTrainer() {
     const newEntry = {
       duration,
       timeTaken,
+      difficulty,
       operations: activeOps,
       correct,
       attempted,

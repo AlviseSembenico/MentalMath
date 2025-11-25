@@ -3,11 +3,14 @@
 import { auth } from "@/auth";
 import { prisma } from "../prisma/client";
 
+type DifficultyId = "sparks" | "balanced" | "insane";
+
 export type StatsDataPoint = {
   sessionId: number;
   sessionDate: string;
   category: string;
   averageTime: number;
+  difficulty: DifficultyId;
 };
 
 export async function fetchStatsData(): Promise<StatsDataPoint[]> {
@@ -33,6 +36,7 @@ export async function fetchStatsData(): Promise<StatsDataPoint[]> {
 
   for (const historyEntry of user.history) {
     const attemptsByCategory = new Map<string, number[]>();
+    const difficulty = (historyEntry.difficulty as DifficultyId) ?? "balanced";
 
     for (const attempt of historyEntry.problemAttempts) {
       const category = attempt.operation;
@@ -50,6 +54,7 @@ export async function fetchStatsData(): Promise<StatsDataPoint[]> {
           sessionDate: historyEntry.createdAt.toISOString(),
           category,
           averageTime: Math.round(averageTime * 10) / 10,
+          difficulty,
         });
       }
     }
@@ -62,6 +67,7 @@ export async function fetchStatsData(): Promise<StatsDataPoint[]> {
         sessionDate: historyEntry.createdAt.toISOString(),
         category: "overall",
         averageTime: Math.round(overallAverage * 10) / 10,
+        difficulty,
       });
     }
   }
