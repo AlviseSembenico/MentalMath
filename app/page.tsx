@@ -2,6 +2,7 @@ import { auth, signIn, signOut } from "@/auth";
 
 import Image from "next/image";
 import MathTrainer from "@/components/math-trainer";
+import ThemeToggle from "@/components/theme-toggle";
 import { postLogin } from "@/manage/login";
 
 export default async function Home() {
@@ -27,6 +28,7 @@ export default async function Home() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <ThemeToggle />
             {session?.user ? (
               <>
                 <a
