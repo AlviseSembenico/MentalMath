@@ -208,6 +208,7 @@ export default function MathTrainer() {
   const [correct, setCorrect] = useState(0);
   const [value, setValue] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [problemAttempts, setProblemAttempts] = useState<Array<{
     prompt: string;
@@ -257,11 +258,17 @@ export default function MathTrainer() {
     }
   }, [status, problem]);
 
+  const selectedEntry = useMemo(
+    () => history.find((entry) => entry.id === selectedEntryId) ?? null,
+    [history, selectedEntryId],
+  );
+
   useEffect(() => {
     const loadHistory = async () => {
       try {
         const data = await fetchHistory();
         setHistory(data);
+        setSelectedEntryId((prev) => prev ?? data[0]?.id ?? null);
       } catch (error) {
         // User might not be logged in, silently fail
       }
@@ -318,6 +325,7 @@ export default function MathTrainer() {
       },
       ...prev,
     ]);
+    setSelectedEntryId(tempId);
 
     try {
       const savedEntry = await saveHistoryEntry(newEntry);
@@ -327,6 +335,7 @@ export default function MathTrainer() {
             entry.id === tempId ? savedEntry : entry,
           ),
         );
+        setSelectedEntryId(savedEntry.id);
       }
     } catch (error) {
       // User might not be logged in, silently fail
@@ -605,7 +614,7 @@ export default function MathTrainer() {
         </div>
       )}
       <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-        <section className="rounded-3xl border border-zinc-200 bg-white/70 p-8 shadow-lg shadow-zinc-500/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
+        <section className="rounded-3xl border border-zinc-200 bg-white/70 p-8 shadow-lg shadow-zinc-500/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70 flex flex-col">
         <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-emerald-500">
@@ -743,6 +752,63 @@ export default function MathTrainer() {
             >
               Reset
             </button>
+          )}
+        </div>
+        <div className="mt-6 flex flex-1 min-h-0 flex-col rounded-2xl border border-zinc-200 bg-white/80 p-5 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Run details</p>
+              <h4 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                {selectedEntry
+                  ? `${selectedEntry.correct}/${selectedEntry.attempted} · ${selectedEntry.duration}s`
+                  : "No run selected"}
+              </h4>
+            </div>
+            {selectedEntry && (
+              <p className="text-xs text-zinc-500">
+                {new Date(selectedEntry.createdAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+          {!selectedEntry ? (
+            <p className="mt-4 text-zinc-500">
+              Finish a run or select one from the history panel to review each prompt.
+            </p>
+          ) : selectedEntry.problemAttempts.length === 0 ? (
+            <p className="mt-4 text-zinc-500">No attempts recorded for this run.</p>
+          ) : (
+            <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-2">
+              {selectedEntry.problemAttempts.map((attempt, index) => {
+                const stateClasses = attempt.isCorrect
+                  ? "border-emerald-200 bg-emerald-50/80 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-900/20 dark:text-emerald-200"
+                  : "border-rose-200 bg-rose-50/80 text-rose-700 dark:border-rose-500/40 dark:bg-rose-900/20 dark:text-rose-200";
+                return (
+                  <div
+                    key={`${attempt.prompt}-${index}`}
+                    className={`rounded-2xl border px-4 py-3 transition ${stateClasses}`}
+                  >
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em]">
+                      <span>{attempt.operation}</span>
+                      <span>{attempt.timeTaken}s</span>
+                    </div>
+                    <p className="mt-1 text-base font-semibold text-zinc-900 dark:text-white">
+                      {attempt.prompt}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                      <span className="font-semibold">
+                        Correct: <span className="font-normal">{attempt.answer}</span>
+                      </span>
+                      <span className="font-semibold">
+                        You:{" "}
+                        <span className="font-normal">
+                          {Number.isNaN(attempt.userAnswer) ? "—" : attempt.userAnswer}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </section>
@@ -898,30 +964,36 @@ export default function MathTrainer() {
           ) : (
             <ul className="space-y-3">
               {history.slice(0, 5).map((entry) => (
-                <li
-                  key={entry.id}
-                  className="rounded-2xl border border-zinc-100 bg-zinc-50/80 px-4 py-3 text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">
-                        {new Date(entry.createdAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                      <p className="text-base font-semibold text-zinc-900 dark:text-white">
-                        {entry.correct} / {entry.attempted} correct
-                      </p>
+                <li key={entry.id}>
+                  <button
+                    onClick={() => setSelectedEntryId(entry.id)}
+                    className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
+                      entry.id === selectedEntryId
+                        ? "border-emerald-400 bg-emerald-50/70 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-900/30 dark:text-emerald-200"
+                        : "border-zinc-100 bg-zinc-50/80 text-zinc-700 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-200 dark:hover:border-zinc-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">
+                          {new Date(entry.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        <p className="text-base font-semibold text-zinc-900 dark:text-white">
+                          {entry.correct} / {entry.attempted} correct
+                        </p>
+                      </div>
+                      <div className="text-right text-xs">
+                        <p className="font-semibold text-emerald-600">{entry.score} pts</p>
+                        <p className="text-zinc-500">{Math.round(entry.pace)} /min</p>
+                      </div>
                     </div>
-                    <div className="text-right text-xs">
-                      <p className="font-semibold text-emerald-600">{entry.score} pts</p>
-                      <p className="text-zinc-500">{Math.round(entry.pace)} /min</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    Accuracy {entry.accuracy}% · {entry.duration}s
-                  </p>
+                    <p className="text-xs text-zinc-500">
+                      Accuracy {entry.accuracy}% · {entry.duration}s
+                    </p>
+                  </button>
                 </li>
               ))}
             </ul>
