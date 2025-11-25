@@ -225,9 +225,9 @@ export default function MathTrainer() {
   const [autoSubmit, setAutoSubmit] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("mathTrainer_autoSubmit");
-      return saved === "true";
+      return saved === null ? true : saved === "true";
     }
-    return false;
+    return true;
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const hasFinishedRef = useRef(false);
