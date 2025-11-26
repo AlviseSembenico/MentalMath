@@ -7,6 +7,8 @@ type Operation = "addition" | "subtraction" | "multiplication" | "division" | "s
 
 type DifficultyId = "sparks" | "balanced" | "insane";
 
+type TrainingMode = "operations" | "working-memory" | "fractional";
+
 type Problem = {
   prompt: string;
   answer: number;
@@ -18,6 +20,7 @@ type HistoryEntry = {
   duration: number;
   timeTaken: number;
   difficulty: DifficultyId;
+  maxDecimalPlaces: number;
   operations: string[];
   correct: number;
   attempted: number;
@@ -192,6 +195,149 @@ function generateWorkingMemoryProblem(
   };
 }
 
+const buildDecimalDigits = (length: number) => {
+  if (length <= 0) return "";
+  let digits = "";
+  let hasNonZero = false;
+  for (let index = 0; index < length; index += 1) {
+    const digit = randomInt(0, 9);
+    if (digit !== 0) {
+      hasNonZero = true;
+    }
+    digits += digit.toString();
+  }
+  if (!hasNonZero) {
+    const replacementIndex = Math.max(0, Math.min(length - 1, Math.floor(Math.random() * length)));
+    const replacement = randomInt(1, 9);
+    digits = `${digits.slice(0, replacementIndex)}${replacement.toString()}${digits.slice(replacementIndex + 1)}`;
+  }
+  return digits;
+};
+
+const clampDecimalPlaces = (value: number, maxDecimalPlaces: number) => {
+  if (maxDecimalPlaces <= 0) {
+    return value;
+  }
+  return Number(value.toFixed(maxDecimalPlaces));
+};
+
+const generateFractionalOperand = (
+  difficulty: (typeof difficulties)[number],
+  maxDecimalPlaces: number,
+  allowInteger: boolean = false,
+) => {
+  const sanitizedDecimals = Math.max(0, Math.floor(maxDecimalPlaces));
+  const base = randomInt(difficulty.min, difficulty.max);
+  if (sanitizedDecimals === 0) {
+    return { value: base, string: base.toString() };
+  }
+  const minDecimals = allowInteger ? 0 : 1;
+  const decimals = randomInt(minDecimals, sanitizedDecimals);
+  if (decimals === 0) {
+    return { value: base, string: base.toString() };
+  }
+  const fractionalDigits = buildDecimalDigits(decimals);
+  const value = Number(`${base}.${fractionalDigits}`);
+  return {
+    value,
+    string: `${base}.${fractionalDigits}`,
+  };
+};
+
+function generateFractionalProblem(
+  ops: Operation[],
+  difficulty: (typeof difficulties)[number],
+  maxDecimalPlaces: number,
+): Problem {
+  const sanitizedDecimals = Math.max(0, Math.floor(maxDecimalPlaces));
+  if (sanitizedDecimals <= 0) {
+    return generateProblem(ops, difficulty);
+  }
+  const availableOps = ops.length === 0 ? ["addition"] : ops;
+  const operation = availableOps[Math.floor(Math.random() * availableOps.length)];
+
+  const formatPrompt = (symbol: string, left: { string: string }, right: { string: string }) =>
+    `${left.string} ${symbol} ${right.string}`;
+
+  switch (operation) {
+    case "addition": {
+      const useIntegerOperands = Math.random() < 0.3;
+      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      const operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      const answer = clampDecimalPlaces(operandA.value + operandB.value, sanitizedDecimals);
+      return { prompt: formatPrompt("+", operandA, operandB), answer, operation };
+    }
+    case "subtraction": {
+      const useIntegerOperands = Math.random() < 0.3;
+      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      const operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      const [left, right] = operandA.value >= operandB.value ? [operandA, operandB] : [operandB, operandA];
+      const answer = clampDecimalPlaces(left.value - right.value, sanitizedDecimals);
+      return { prompt: formatPrompt("−", left, right), answer, operation };
+    }
+    case "multiplication": {
+      const useIntegerOperands = Math.random() < 0.3;
+      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      const operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      const answer = clampDecimalPlaces(operandA.value * operandB.value, sanitizedDecimals);
+      return { prompt: formatPrompt("×", operandA, operandB), answer, operation };
+    }
+    case "division": {
+      const useIntegerOperands = Math.random() < 0.8;
+      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      let operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      if (operandB.value === 0) {
+        operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
+      }
+      const divisor =
+        operandB.value === 0
+          ? { value: 1, string: "1" }
+          : operandB;
+      const rawAnswer = operandA.value / divisor.value;
+      const answer = clampDecimalPlaces(rawAnswer, sanitizedDecimals);
+      if (useIntegerOperands && answer % 1 === 0) {
+        const operandA2 = generateFractionalOperand(difficulty, sanitizedDecimals, true);
+        let operandB2 = generateFractionalOperand(difficulty, sanitizedDecimals, true);
+        if (operandB2.value === 0) {
+          operandB2 = generateFractionalOperand(difficulty, sanitizedDecimals, true);
+        }
+        const divisor2 = operandB2.value === 0 ? { value: 1, string: "1" } : operandB2;
+        const rawAnswer2 = operandA2.value / divisor2.value;
+        const answer2 = clampDecimalPlaces(rawAnswer2, sanitizedDecimals);
+        if (answer2 % 1 !== 0) {
+          return { prompt: formatPrompt("÷", operandA2, divisor2), answer: answer2, operation };
+        }
+      }
+      return { prompt: formatPrompt("÷", operandA, divisor), answer, operation };
+    }
+    case "square": {
+      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals);
+      const answer = clampDecimalPlaces(operandA.value * operandA.value, sanitizedDecimals);
+      return { prompt: `${operandA.string}²`, answer, operation };
+    }
+    default:
+      return generateProblem(ops, difficulty);
+  }
+}
+
+const buildProblemForMode = (
+  mode: TrainingMode,
+  options: {
+    ops: Operation[];
+    workingMemoryOps: number;
+    difficulty: (typeof difficulties)[number];
+    maxDecimalPlaces: number;
+  },
+): Problem => {
+  if (mode === "working-memory") {
+    return generateWorkingMemoryProblem(options.workingMemoryOps, options.difficulty);
+  }
+  if (mode === "fractional") {
+    return generateFractionalProblem(options.ops, options.difficulty, options.maxDecimalPlaces);
+  }
+  return generateProblem(options.ops, options.difficulty);
+};
+
 export default function MathTrainer() {
   const [durationMinutes, setDurationMinutes] = useState(2);
   const [durationSeconds, setDurationSeconds] = useState(0);
@@ -219,8 +365,9 @@ export default function MathTrainer() {
     isCorrect: boolean;
     timeTaken: number;
   }>>([]);
-  const [activeTab, setActiveTab] = useState<"operations" | "working-memory">("operations");
+  const [activeTab, setActiveTab] = useState<TrainingMode>("operations");
   const [workingMemoryOps, setWorkingMemoryOps] = useState(2);
+  const [fractionalMaxDecimals, setFractionalMaxDecimals] = useState(0);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [autoSubmit, setAutoSubmit] = useState(() => {
     if (typeof window !== "undefined") {
@@ -237,6 +384,24 @@ export default function MathTrainer() {
     [difficulty],
   );
 
+  const generateProblemForCurrentTab = useCallback(
+    (
+      overrides?: Partial<{
+        difficulty: (typeof difficulties)[number];
+        ops: Operation[];
+        workingMemoryOps: number;
+        fractionalMaxDecimals: number;
+        tab: TrainingMode;
+      }>,
+    ) => buildProblemForMode(overrides?.tab ?? activeTab, {
+      ops: overrides?.ops ?? activeOps,
+      workingMemoryOps: overrides?.workingMemoryOps ?? workingMemoryOps,
+      difficulty: overrides?.difficulty ?? currentDifficulty,
+      maxDecimalPlaces: overrides?.fractionalMaxDecimals ?? fractionalMaxDecimals,
+    }),
+    [activeTab, activeOps, workingMemoryOps, currentDifficulty, fractionalMaxDecimals],
+  );
+
   useEffect(() => {
     if (status === "running") {
       inputRef.current?.focus();
@@ -245,13 +410,10 @@ export default function MathTrainer() {
 
   useEffect(() => {
     if (status === "idle") {
-      setProblem(
-        activeTab === "working-memory"
-          ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
-          : generateProblem(activeOps, currentDifficulty),
-      );
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setProblem(generateProblemForCurrentTab());
     }
-  }, [activeTab, workingMemoryOps, currentDifficulty, activeOps, status]);
+  }, [status, generateProblemForCurrentTab]);
 
   useEffect(() => {
     if (status === "running" && problem) {
@@ -270,7 +432,7 @@ export default function MathTrainer() {
         const data = await fetchHistory();
         setHistory(data);
         setSelectedEntryId((prev) => prev ?? data[0]?.id ?? null);
-      } catch (error) {
+      } catch {
         // User might not be logged in, silently fail
       }
     };
@@ -302,6 +464,7 @@ export default function MathTrainer() {
       duration,
       timeTaken,
       difficulty,
+      maxDecimalPlaces: activeTab === "fractional" ? fractionalMaxDecimals : 0,
       operations: activeOps,
       correct,
       attempted,
@@ -339,10 +502,10 @@ export default function MathTrainer() {
         );
         setSelectedEntryId(savedEntry.id);
       }
-    } catch (error) {
+    } catch {
       // User might not be logged in, silently fail
     }
-  }, [accuracy, attempted, correct, duration, score, status, timeLeft, activeOps, problemAttempts]);
+  }, [accuracy, attempted, correct, duration, score, status, timeLeft, activeOps, problemAttempts, activeTab, fractionalMaxDecimals, difficulty]);
 
   useEffect(() => {
     if (status !== "running") return;
@@ -361,11 +524,12 @@ export default function MathTrainer() {
 
   useEffect(() => {
     if (status === "running" && timeLeft === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       finishRound();
     }
   }, [timeLeft, status, finishRound]);
 
-  const startRound = () => {
+  const startRound = useCallback(() => {
     hasFinishedRef.current = false;
     setAttempted(0);
     setCorrect(0);
@@ -373,13 +537,11 @@ export default function MathTrainer() {
     setFeedback(null);
     setProblemAttempts([]);
     setTimeLeft(duration);
-    const newProblem = activeTab === "working-memory"
-      ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
-      : generateProblem(activeOps, currentDifficulty);
+    const newProblem = generateProblemForCurrentTab();
     setProblem(newProblem);
     setStatus("running");
     problemStartTimeRef.current = Date.now();
-  };
+  }, [duration, generateProblemForCurrentTab]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -404,8 +566,40 @@ export default function MathTrainer() {
     setStatus("idle");
   };
 
+  const countDecimalPlaces = (num: number): number => {
+    if (Math.floor(num) === num) return 0;
+    const str = num.toString();
+    if (str.includes("e")) {
+      const match = str.match(/(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
+      if (!match) return 0;
+      const decimals = match[1] ? match[1].length : 0;
+      const exponent = match[2] ? parseInt(match[2], 10) : 0;
+      return Math.max(0, decimals - exponent);
+    }
+    const decimalIndex = str.indexOf(".");
+    return decimalIndex === -1 ? 0 : str.length - decimalIndex - 1;
+  };
+
+  const compareAnswers = (userAnswer: number, correctAnswer: number): boolean => {
+    if (activeTab === "fractional" && fractionalMaxDecimals > 0) {
+      const precision = fractionalMaxDecimals;
+      const roundedUser = Number(userAnswer.toFixed(precision));
+      const roundedCorrect = Number(correctAnswer.toFixed(precision));
+      return roundedUser === roundedCorrect;
+    }
+    const correctDecimals = countDecimalPlaces(correctAnswer);
+    const userDecimals = countDecimalPlaces(userAnswer);
+    if (correctDecimals !== userDecimals) {
+      return false;
+    }
+    const precision = Math.max(correctDecimals, userDecimals);
+    const roundedUser = Number(userAnswer.toFixed(precision));
+    const roundedCorrect = Number(correctAnswer.toFixed(precision));
+    return roundedUser === roundedCorrect;
+  };
+
   const submitAnswer = (answer: number) => {
-    const isCorrect = answer === problem.answer;
+    const isCorrect = compareAnswers(answer, problem.answer);
     setAttempted((prev) => prev + 1);
     if (isCorrect) {
       setCorrect((prev) => prev + 1);
@@ -430,11 +624,7 @@ export default function MathTrainer() {
       },
     ]);
 
-    setProblem(
-      activeTab === "working-memory"
-        ? generateWorkingMemoryProblem(workingMemoryOps, currentDifficulty)
-        : generateProblem(activeOps, currentDifficulty),
-    );
+    setProblem(generateProblemForCurrentTab());
     setValue("");
     inputRef.current?.focus();
     problemStartTimeRef.current = Date.now();
@@ -450,26 +640,35 @@ export default function MathTrainer() {
       !Number.isNaN(Number(newValue))
     ) {
       const parsed = Number(newValue);
-      if (parsed === problem.answer) {
+      if (activeTab === "fractional" && fractionalMaxDecimals > 0) {
+        const trimmedValue = newValue.trim();
+        const decimalIndex = trimmedValue.indexOf(".");
+        const inputDecimals = decimalIndex === -1 ? 0 : trimmedValue.length - decimalIndex - 1;
+        const answerDecimals = countDecimalPlaces(problem.answer);
+        if (answerDecimals === fractionalMaxDecimals && inputDecimals !== answerDecimals) {
+          return;
+        }
+      }
+      if (compareAnswers(parsed, problem.answer)) {
         submitAnswer(parsed);
       }
     }
-  }, [autoSubmit, status, problem, submitAnswer]);
+  }, [autoSubmit, status, problem, submitAnswer, activeTab, fractionalMaxDecimals]);
 
   useEffect(() => {
     if (status !== "running") return;
 
     const keyMap: Record<string, string> = {
-      i: "7",
-      o: "8",
-      p: "9",
-      j: "0",
-      k: "4",
-      l: "5",
-      ";": "6",
-      m: "1",
-      ",": "2",
-      ".": "3",
+      y: "7",
+      u: "8",
+      i: "9",
+      g: "0",
+      h: "4",
+      j: "5",
+      k: "6",
+      b: "1",
+      n: "2",
+      m: "3",
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -540,15 +739,24 @@ export default function MathTrainer() {
     updateDuration(durationMinutes, seconds);
   };
 
+  const handleFractionalMaxChange = (value: string) => {
+    const parsedValue = Math.max(0, Math.floor(Number(value) || 0));
+    setFractionalMaxDecimals(parsedValue);
+    if (status === "idle") {
+      setProblem(
+        generateProblemForCurrentTab({
+          fractionalMaxDecimals: parsedValue,
+          tab: "fractional",
+        }),
+      );
+    }
+  };
+
   const handleDifficultyChange = (id: DifficultyId) => {
     setDifficulty(id);
     if (status === "idle") {
       const nextDifficulty = difficulties.find((diff) => diff.id === id) ?? currentDifficulty;
-      setProblem(
-        activeTab === "working-memory"
-          ? generateWorkingMemoryProblem(workingMemoryOps, nextDifficulty)
-          : generateProblem(activeOps, nextDifficulty),
-      );
+      setProblem(generateProblemForCurrentTab({ difficulty: nextDifficulty }));
     }
   };
 
@@ -558,13 +766,13 @@ export default function MathTrainer() {
         if (prev.length === 1) return prev;
         const updated = prev.filter((op) => op !== operation);
         if (status === "idle") {
-          setProblem(generateProblem(updated, currentDifficulty));
+          setProblem(generateProblemForCurrentTab({ ops: updated }));
         }
         return updated;
       }
       const extended = [...prev, operation];
       if (status === "idle") {
-        setProblem(generateProblem(extended, currentDifficulty));
+        setProblem(generateProblemForCurrentTab({ ops: extended }));
       }
       return extended;
     });
@@ -608,7 +816,7 @@ export default function MathTrainer() {
               <div>
                 <p className="font-semibold text-zinc-900 dark:text-white">Auto Submit</p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Automatically accept the answer when it's correct
+                  Automatically accept the answer when it&apos;s correct
                 </p>
               </div>
             </label>
@@ -639,7 +847,9 @@ export default function MathTrainer() {
             <span>
               {activeTab === "working-memory"
                 ? `${workingMemoryOps} ops`
-                : `${operationOptions.filter((op) => activeOps.includes(op.id)).length} ops`}
+                : activeTab === "fractional"
+                  ? `≤ ${fractionalMaxDecimals} decimals`
+                  : `${operationOptions.filter((op) => activeOps.includes(op.id)).length} ops`}
             </span>
           </div>
 
@@ -665,6 +875,7 @@ export default function MathTrainer() {
               <input
                 ref={inputRef}
                 type="number"
+                step="any"
                 value={value}
                 onChange={(event) => {
                   const newValue = event.target.value;
@@ -767,9 +978,14 @@ export default function MathTrainer() {
               </h4>
             </div>
             {selectedEntry && (
-              <p className="text-xs text-zinc-500">
-                {new Date(selectedEntry.createdAt).toLocaleString()}
-              </p>
+              <div className="text-right text-xs text-zinc-500">
+                <p>{new Date(selectedEntry.createdAt).toLocaleString()}</p>
+                {selectedEntry.maxDecimalPlaces > 0 && (
+                  <p className="mt-1 font-semibold text-emerald-600">
+                    ≤ {selectedEntry.maxDecimalPlaces} decimals
+                  </p>
+                )}
+              </div>
             )}
           </div>
           {!selectedEntry ? (
@@ -878,7 +1094,7 @@ export default function MathTrainer() {
 
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-zinc-500 mb-3">Section</p>
-              <div className="flex gap-2 mb-3">
+            <div className="flex gap-2 mb-3 flex-wrap">
                 <button
                   onClick={() => setActiveTab("operations")}
                   className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
@@ -899,8 +1115,19 @@ export default function MathTrainer() {
                 >
                   Working Memory
                 </button>
+              <button
+                onClick={() => setActiveTab("fractional")}
+                className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+                  activeTab === "fractional"
+                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                    : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                }`}
+              >
+                Fractional
+              </button>
               </div>
-              {activeTab === "operations" && (
+            {(activeTab === "operations" || activeTab === "fractional") && (
+              <>
                 <div className="grid grid-cols-2 gap-2">
                   {operationOptions.map((option) => {
                     const isActive = activeOps.includes(option.id);
@@ -919,7 +1146,26 @@ export default function MathTrainer() {
                     );
                   })}
                 </div>
-              )}
+                {activeTab === "fractional" && (
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                      Max decimal places
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={fractionalMaxDecimals}
+                      onChange={(e) => handleFractionalMaxChange(e.target.value)}
+                      disabled={status === "running"}
+                      className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                    />
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      Decimals can appear in the prompt or the result.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
               {activeTab === "working-memory" && (
                 <div>
                   <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
@@ -995,6 +1241,11 @@ export default function MathTrainer() {
                     <p className="text-xs text-zinc-500">
                       Accuracy {entry.accuracy}% · {entry.duration}s
                     </p>
+                    {entry.maxDecimalPlaces > 0 && (
+                      <p className="text-xs font-semibold text-emerald-600">
+                        ≤ {entry.maxDecimalPlaces} decimals
+                      </p>
+                    )}
                   </button>
                 </li>
               ))}

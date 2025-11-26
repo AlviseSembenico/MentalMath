@@ -28,6 +28,7 @@ model History {
   duration     Int
   timeTaken    Int              @default(0)
   difficulty   String           @default("balanced")
+  maxDecimalPlaces Int          @default(0)
   operations   String[]         @default([])
   correct      Int
   attempted    Int
@@ -43,8 +44,8 @@ model ProblemAttempt {
   historyId Int
   history   History  @relation(fields: [historyId], references: [id], onDelete: Cascade)
   prompt    String
-  answer    Int
-  userAnswer Int
+  answer    Float
+  userAnswer Float
   operation String
   isCorrect Boolean
   timeTaken Int      @default(0)

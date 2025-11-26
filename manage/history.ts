@@ -33,6 +33,7 @@ export async function fetchHistory() {
         duration: entry.duration,
         timeTaken: entry.timeTaken,
         difficulty: (entry.difficulty as DifficultyId) ?? "balanced",
+        maxDecimalPlaces: entry.maxDecimalPlaces ?? 0,
         operations: entry.operations,
         correct: entry.correct,
         attempted: entry.attempted,
@@ -55,6 +56,7 @@ export async function saveHistoryEntry(data: {
     duration: number;
     timeTaken: number;
     difficulty: DifficultyId;
+    maxDecimalPlaces: number;
     operations: string[];
     correct: number;
     attempted: number;
@@ -85,6 +87,7 @@ export async function saveHistoryEntry(data: {
             duration: data.duration,
             timeTaken: data.timeTaken,
             difficulty: data.difficulty,
+            maxDecimalPlaces: data.maxDecimalPlaces,
             operations: data.operations,
             correct: data.correct,
             attempted: data.attempted,
@@ -112,6 +115,7 @@ export async function saveHistoryEntry(data: {
         duration: historyEntry.duration,
         timeTaken: historyEntry.timeTaken,
         difficulty: (historyEntry.difficulty as DifficultyId) ?? "balanced",
+        maxDecimalPlaces: historyEntry.maxDecimalPlaces ?? 0,
         operations: historyEntry.operations,
         correct: historyEntry.correct,
         attempted: historyEntry.attempted,
