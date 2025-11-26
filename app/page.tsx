@@ -21,9 +21,8 @@ export default async function Home() {
               M
             </div>
             <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-emerald-500">mmath</p>
               <h1 className="text-3xl font-semibold text-zinc-900 dark:text-white">
-                Competitive mental math
+                Mental Math trainer
               </h1>
             </div>
           </div>
