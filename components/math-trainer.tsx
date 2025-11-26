@@ -43,7 +43,7 @@ const operationOptions: { id: Operation; label: string; symbol: string }[] = [
   { id: "subtraction", label: "Subtraction", symbol: "−" },
   { id: "multiplication", label: "Multiplication", symbol: "×" },
   { id: "division", label: "Division", symbol: "÷" },
-  { id:'square', label: 'Square', symbol: '²'},
+  { id: 'square', label: 'Square', symbol: '²' },
 ];
 
 const difficulties: {
@@ -53,28 +53,28 @@ const difficulties: {
   max: number;
   description: string;
 }[] = [
-  {
-    id: "sparks",
-    label: "Sparks",
-    min: 0,
-    max: 9,
-    description: "Single digits. Pure speed.",
-  },
-  {
-    id: "balanced",
-    label: "Balanced",
-    min: 3,
-    max: 24,
-    description: "Like classic Zetamac rounds.",
-  },
-  {
-    id: "insane",
-    label: "Insane",
-    min: 10,
-    max: 99,
-    description: "Two-digit chaos, zero mercy.",
-  },
-];
+    {
+      id: "sparks",
+      label: "Sparks",
+      min: 0,
+      max: 9,
+      description: "Single digits. Pure speed.",
+    },
+    {
+      id: "balanced",
+      label: "Balanced",
+      min: 3,
+      max: 24,
+      description: "Like classic Zetamac rounds.",
+    },
+    {
+      id: "insane",
+      label: "Insane",
+      min: 10,
+      max: 99,
+      description: "Two-digit chaos, zero mercy.",
+    },
+  ];
 
 const randomInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
@@ -130,11 +130,9 @@ function generateExpression(
   }
 }
 
-function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[number]): Problem {
-  const operation = ops[Math.floor(Math.random() * ops.length)];
-  const a = randomInt(difficulty.min, difficulty.max);
-  const b = randomInt(difficulty.min, difficulty.max);
 
+
+function writeProblem(a: number, b: number, operation: string): Problem {
   switch (operation) {
     case "addition": {
       return {
@@ -182,6 +180,15 @@ function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[num
   }
 }
 
+function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[number]): Problem {
+  const operation = ops[randomInt(0, ops.length - 1)];
+  const a = randomInt(difficulty.min, difficulty.max);
+  const b = randomInt(difficulty.min, difficulty.max);
+
+  return writeProblem(a, b, operation);
+
+}
+
 function generateWorkingMemoryProblem(
   numOps: number,
   difficulty: (typeof difficulties)[number],
@@ -195,129 +202,26 @@ function generateWorkingMemoryProblem(
   };
 }
 
-const buildDecimalDigits = (length: number) => {
-  if (length <= 0) return "";
-  let digits = "";
-  let hasNonZero = false;
-  for (let index = 0; index < length; index += 1) {
-    const digit = randomInt(0, 9);
-    if (digit !== 0) {
-      hasNonZero = true;
-    }
-    digits += digit.toString();
+function generateFractionalNumber(maxDecimalPlaces: number, difficulty: (typeof difficulties)[number],): number {
+  var a = null;
+  while (a == null || a.toString().length > 2 * difficulty.max.toString().length + 1) {
+    a = randomInt(difficulty.min, difficulty.max);
+    const decA = randomInt(0, maxDecimalPlaces);
+    a /= 10 ** decA;
   }
-  if (!hasNonZero) {
-    const replacementIndex = Math.max(0, Math.min(length - 1, Math.floor(Math.random() * length)));
-    const replacement = randomInt(1, 9);
-    digits = `${digits.slice(0, replacementIndex)}${replacement.toString()}${digits.slice(replacementIndex + 1)}`;
-  }
-  return digits;
-};
+  return a;
+}
 
-const clampDecimalPlaces = (value: number, maxDecimalPlaces: number) => {
-  if (maxDecimalPlaces <= 0) {
-    return value;
-  }
-  return Number(value.toFixed(maxDecimalPlaces));
-};
-
-const generateFractionalOperand = (
-  difficulty: (typeof difficulties)[number],
-  maxDecimalPlaces: number,
-  allowInteger: boolean = false,
-) => {
-  const sanitizedDecimals = Math.max(0, Math.floor(maxDecimalPlaces));
-  const base = randomInt(difficulty.min, difficulty.max);
-  if (sanitizedDecimals === 0) {
-    return { value: base, string: base.toString() };
-  }
-  const minDecimals = allowInteger ? 0 : 1;
-  const decimals = randomInt(minDecimals, sanitizedDecimals);
-  if (decimals === 0) {
-    return { value: base, string: base.toString() };
-  }
-  const fractionalDigits = buildDecimalDigits(decimals);
-  const value = Number(`${base}.${fractionalDigits}`);
-  return {
-    value,
-    string: `${base}.${fractionalDigits}`,
-  };
-};
 
 function generateFractionalProblem(
   ops: Operation[],
   difficulty: (typeof difficulties)[number],
   maxDecimalPlaces: number,
 ): Problem {
-  const sanitizedDecimals = Math.max(0, Math.floor(maxDecimalPlaces));
-  if (sanitizedDecimals <= 0) {
-    return generateProblem(ops, difficulty);
-  }
-  const availableOps = ops.length === 0 ? ["addition"] : ops;
-  const operation = availableOps[Math.floor(Math.random() * availableOps.length)];
-
-  const formatPrompt = (symbol: string, left: { string: string }, right: { string: string }) =>
-    `${left.string} ${symbol} ${right.string}`;
-
-  switch (operation) {
-    case "addition": {
-      const useIntegerOperands = Math.random() < 0.3;
-      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      const operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      const answer = clampDecimalPlaces(operandA.value + operandB.value, sanitizedDecimals);
-      return { prompt: formatPrompt("+", operandA, operandB), answer, operation };
-    }
-    case "subtraction": {
-      const useIntegerOperands = Math.random() < 0.3;
-      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      const operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      const [left, right] = operandA.value >= operandB.value ? [operandA, operandB] : [operandB, operandA];
-      const answer = clampDecimalPlaces(left.value - right.value, sanitizedDecimals);
-      return { prompt: formatPrompt("−", left, right), answer, operation };
-    }
-    case "multiplication": {
-      const useIntegerOperands = Math.random() < 0.3;
-      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      const operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      const answer = clampDecimalPlaces(operandA.value * operandB.value, sanitizedDecimals);
-      return { prompt: formatPrompt("×", operandA, operandB), answer, operation };
-    }
-    case "division": {
-      const useIntegerOperands = Math.random() < 0.8;
-      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      let operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      if (operandB.value === 0) {
-        operandB = generateFractionalOperand(difficulty, sanitizedDecimals, useIntegerOperands);
-      }
-      const divisor =
-        operandB.value === 0
-          ? { value: 1, string: "1" }
-          : operandB;
-      const rawAnswer = operandA.value / divisor.value;
-      const answer = clampDecimalPlaces(rawAnswer, sanitizedDecimals);
-      if (useIntegerOperands && answer % 1 === 0) {
-        const operandA2 = generateFractionalOperand(difficulty, sanitizedDecimals, true);
-        let operandB2 = generateFractionalOperand(difficulty, sanitizedDecimals, true);
-        if (operandB2.value === 0) {
-          operandB2 = generateFractionalOperand(difficulty, sanitizedDecimals, true);
-        }
-        const divisor2 = operandB2.value === 0 ? { value: 1, string: "1" } : operandB2;
-        const rawAnswer2 = operandA2.value / divisor2.value;
-        const answer2 = clampDecimalPlaces(rawAnswer2, sanitizedDecimals);
-        if (answer2 % 1 !== 0) {
-          return { prompt: formatPrompt("÷", operandA2, divisor2), answer: answer2, operation };
-        }
-      }
-      return { prompt: formatPrompt("÷", operandA, divisor), answer, operation };
-    }
-    case "square": {
-      const operandA = generateFractionalOperand(difficulty, sanitizedDecimals);
-      const answer = clampDecimalPlaces(operandA.value * operandA.value, sanitizedDecimals);
-      return { prompt: `${operandA.string}²`, answer, operation };
-    }
-    default:
-      return generateProblem(ops, difficulty);
-  }
+  const operation = ops[randomInt(0, ops.length - 1)];
+  const a = generateFractionalNumber(maxDecimalPlaces, difficulty);
+  const b = generateFractionalNumber(maxDecimalPlaces, difficulty);
+  return writeProblem(a, b, operation);
 }
 
 const buildProblemForMode = (
@@ -566,40 +470,10 @@ export default function MathTrainer() {
     setStatus("idle");
   };
 
-  const countDecimalPlaces = (num: number): number => {
-    if (Math.floor(num) === num) return 0;
-    const str = num.toString();
-    if (str.includes("e")) {
-      const match = str.match(/(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/);
-      if (!match) return 0;
-      const decimals = match[1] ? match[1].length : 0;
-      const exponent = match[2] ? parseInt(match[2], 10) : 0;
-      return Math.max(0, decimals - exponent);
-    }
-    const decimalIndex = str.indexOf(".");
-    return decimalIndex === -1 ? 0 : str.length - decimalIndex - 1;
-  };
 
-  const compareAnswers = (userAnswer: number, correctAnswer: number): boolean => {
-    if (activeTab === "fractional" && fractionalMaxDecimals > 0) {
-      const precision = fractionalMaxDecimals;
-      const roundedUser = Number(userAnswer.toFixed(precision));
-      const roundedCorrect = Number(correctAnswer.toFixed(precision));
-      return roundedUser === roundedCorrect;
-    }
-    const correctDecimals = countDecimalPlaces(correctAnswer);
-    const userDecimals = countDecimalPlaces(userAnswer);
-    if (correctDecimals !== userDecimals) {
-      return false;
-    }
-    const precision = Math.max(correctDecimals, userDecimals);
-    const roundedUser = Number(userAnswer.toFixed(precision));
-    const roundedCorrect = Number(correctAnswer.toFixed(precision));
-    return roundedUser === roundedCorrect;
-  };
 
   const submitAnswer = (answer: number) => {
-    const isCorrect = compareAnswers(answer, problem.answer);
+    const isCorrect = answer == problem.answer;
     setAttempted((prev) => prev + 1);
     if (isCorrect) {
       setCorrect((prev) => prev + 1);
@@ -608,7 +482,7 @@ export default function MathTrainer() {
       setFeedback("wrong");
     }
 
-    const timeTaken = problemStartTimeRef.current 
+    const timeTaken = problemStartTimeRef.current
       ? Math.round((Date.now() - problemStartTimeRef.current) / 1000)
       : 0;
 
@@ -825,434 +699,426 @@ export default function MathTrainer() {
       )}
       <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
         <section className="rounded-3xl border border-zinc-200 bg-white/70 p-8 shadow-lg shadow-zinc-500/5 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70 flex flex-col">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-emerald-500">
-              {status === "running" ? "Live round" : status === "finished" ? "Complete" : "Ready"}
-            </p>
-            <h2 className="text-3xl font-semibold text-zinc-900 dark:text-white">
-              Lightning arithmetic
-            </h2>
-          </div>
-          <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white/70 px-4 py-2 text-sm font-semibold text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-            <span>{Math.floor(timeLeft / 60).toString().padStart(2, "0")}</span>
-            <span>:</span>
-            <span>{(timeLeft % 60).toString().padStart(2, "0")}</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-8 dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
-          <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
-            <span>{currentDifficulty.label}</span>
-            <span>
-              {activeTab === "working-memory"
-                ? `${workingMemoryOps} ops`
-                : activeTab === "fractional"
-                  ? `≤ ${fractionalMaxDecimals} decimals`
-                  : `${operationOptions.filter((op) => activeOps.includes(op.id)).length} ops`}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-emerald-500">
+                {status === "running" ? "Live round" : status === "finished" ? "Complete" : "Ready"}
+              </p>
+              <h2 className="text-3xl font-semibold text-zinc-900 dark:text-white">
+                Lightning arithmetic
+              </h2>
+            </div>
+            <div className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white/70 px-4 py-2 text-sm font-semibold text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+              <span>{Math.floor(timeLeft / 60).toString().padStart(2, "0")}</span>
+              <span>:</span>
+              <span>{(timeLeft % 60).toString().padStart(2, "0")}</span>
+            </div>
           </div>
 
-          <div className="flex flex-col items-center gap-6 py-10">
-            <div
-              className={`text-5xl font-bold tracking-tight text-zinc-900 transition duration-150 dark:text-white ${
-                feedback === "correct"
+          <div className="rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 p-8 dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800">
+            <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
+              <span>{currentDifficulty.label}</span>
+              <span>
+                {activeTab === "working-memory"
+                  ? `${workingMemoryOps} ops`
+                  : activeTab === "fractional"
+                    ? `≤ ${fractionalMaxDecimals} decimals`
+                    : `${operationOptions.filter((op) => activeOps.includes(op.id)).length} ops`}
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center gap-6 py-10">
+              <div
+                className={`text-5xl font-bold tracking-tight text-zinc-900 transition duration-150 dark:text-white ${feedback === "correct"
                   ? "scale-105 text-emerald-500"
                   : feedback === "wrong"
                     ? "scale-95 text-rose-500"
                     : ""
-              }`}
-            >
-              {status === "idle" && "Press start"}
-              {status === "running" && problem.prompt}
-              {status === "finished" && "Time!"}
-            </div>
+                  }`}
+              >
+                {status === "idle" && "Press start"}
+                {status === "running" && problem.prompt}
+                {status === "finished" && "Time!"}
+              </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="flex w-full flex-col gap-4 text-center sm:flex-row"
-            >
-              <input
-                ref={inputRef}
-                type="number"
-                step="any"
-                value={value}
-                onChange={(event) => {
-                  const newValue = event.target.value;
-                  setValue(newValue);
-                  checkAutoSubmit(newValue);
-                }}
-                placeholder={status === "running" ? "Type answer" : "Get ready"}
-                disabled={status !== "running"}
-                inputMode="numeric"
-                className={`w-full rounded-2xl border px-5 py-4 text-center text-2xl font-semibold text-zinc-900 outline-none transition disabled:cursor-not-allowed disabled:opacity-50 dark:text-white ${
-                  feedback === "correct"
+              <form
+                onSubmit={handleSubmit}
+                className="flex w-full flex-col gap-4 text-center sm:flex-row"
+              >
+                <input
+                  ref={inputRef}
+                  type="number"
+                  step="any"
+                  value={value}
+                  onChange={(event) => {
+                    const newValue = event.target.value;
+                    setValue(newValue);
+                    checkAutoSubmit(newValue);
+                  }}
+                  placeholder={status === "running" ? "Type answer" : "Get ready"}
+                  disabled={status !== "running"}
+                  inputMode="numeric"
+                  className={`w-full rounded-2xl border px-5 py-4 text-center text-2xl font-semibold text-zinc-900 outline-none transition disabled:cursor-not-allowed disabled:opacity-50 dark:text-white ${feedback === "correct"
                     ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-900/30"
                     : feedback === "wrong"
                       ? "border-rose-400 bg-rose-50 ring-2 ring-rose-300 dark:border-rose-500 dark:bg-rose-900/30"
                       : "border-zinc-300 bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-zinc-700 dark:bg-zinc-900"
-                }`}
-              />
-              <button
-                type="submit"
-                disabled={status !== "running"}
-                className="rounded-2xl bg-emerald-500 px-6 py-4 text-base font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Submit
-              </button>
-            </form>
+                    }`}
+                />
+                <button
+                  type="submit"
+                  disabled={status !== "running"}
+                  className="rounded-2xl bg-emerald-500 px-6 py-4 text-base font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Submit
+                </button>
+              </form>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-zinc-200 pt-6 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em]">Attempted</p>
+                <p className="text-xl font-semibold text-zinc-900 dark:text-white">{attempted}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em]">Correct</p>
+                <p className="text-xl font-semibold text-emerald-500">{correct}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em]">Accuracy</p>
+                <p className="text-xl font-semibold">{accuracy}%</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em]">Score</p>
+                <p className="text-xl font-semibold text-sky-500">{score}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em]">Pace</p>
+                <p className="text-xl font-semibold">{pace || 0} /min</p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-dashed border-zinc-200 pt-6 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em]">Attempted</p>
-              <p className="text-xl font-semibold text-zinc-900 dark:text-white">{attempted}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em]">Correct</p>
-              <p className="text-xl font-semibold text-emerald-500">{correct}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em]">Accuracy</p>
-              <p className="text-xl font-semibold">{accuracy}%</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em]">Score</p>
-              <p className="text-xl font-semibold text-sky-500">{score}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em]">Pace</p>
-              <p className="text-xl font-semibold">{pace || 0} /min</p>
-            </div>
+          <div className="mt-6 flex flex-wrap gap-4">
+            {status !== "running" ? (
+              <button
+                onClick={startRound}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-6 py-4 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black"
+              >
+                {status === "finished" ? "Run it back" : "Start round"}
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={finishRound}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-semibold text-zinc-900 transition hover:border-emerald-500 dark:border-zinc-700 dark:text-white"
+                >
+                  End round
+                </button>
+                <button
+                  onClick={cancelRound}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 px-6 py-4 text-sm font-semibold text-rose-600 transition hover:border-rose-400 dark:border-rose-700 dark:text-rose-400"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+            {status !== "running" && (
+              <button
+                onClick={() => {
+                  hasFinishedRef.current = false;
+                  setAttempted(0);
+                  setCorrect(0);
+                  setValue("");
+                  setTimeLeft(duration);
+                  setStatus("idle");
+                }}
+                className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 px-6 py-4 text-sm font-semibold text-emerald-600 transition hover:border-emerald-400"
+              >
+                Reset
+              </button>
+            )}
           </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap gap-4">
-          {status !== "running" ? (
-            <button
-              onClick={startRound}
-              className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-6 py-4 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-black"
-            >
-              {status === "finished" ? "Run it back" : "Start round"}
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={finishRound}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-semibold text-zinc-900 transition hover:border-emerald-500 dark:border-zinc-700 dark:text-white"
-              >
-                End round
-              </button>
-              <button
-                onClick={cancelRound}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 px-6 py-4 text-sm font-semibold text-rose-600 transition hover:border-rose-400 dark:border-rose-700 dark:text-rose-400"
-              >
-                Cancel
-              </button>
-            </>
-          )}
-          {status !== "running" && (
-            <button
-              onClick={() => {
-                hasFinishedRef.current = false;
-                setAttempted(0);
-                setCorrect(0);
-                setValue("");
-                setTimeLeft(duration);
-                setStatus("idle");
-              }}
-              className="inline-flex items-center justify-center rounded-2xl border border-emerald-200 px-6 py-4 text-sm font-semibold text-emerald-600 transition hover:border-emerald-400"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-        <div className="mt-6 flex flex-1 min-h-0 flex-col rounded-2xl border border-zinc-200 bg-white/80 p-5 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Run details</p>
-              <h4 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                {selectedEntry
-                  ? `${selectedEntry.correct}/${selectedEntry.attempted} · ${selectedEntry.duration}s`
-                  : "No run selected"}
-              </h4>
+          <div className="mt-6 flex flex-1 min-h-0 flex-col rounded-2xl border border-zinc-200 bg-white/80 p-5 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Run details</p>
+                <h4 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                  {selectedEntry
+                    ? `${selectedEntry.correct}/${selectedEntry.attempted} · ${selectedEntry.duration}s`
+                    : "No run selected"}
+                </h4>
+              </div>
+              {selectedEntry && (
+                <div className="text-right text-xs text-zinc-500">
+                  <p>{new Date(selectedEntry.createdAt).toLocaleString()}</p>
+                  {selectedEntry.maxDecimalPlaces > 0 && (
+                    <p className="mt-1 font-semibold text-emerald-600">
+                      ≤ {selectedEntry.maxDecimalPlaces} decimals
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-            {selectedEntry && (
-              <div className="text-right text-xs text-zinc-500">
-                <p>{new Date(selectedEntry.createdAt).toLocaleString()}</p>
-                {selectedEntry.maxDecimalPlaces > 0 && (
-                  <p className="mt-1 font-semibold text-emerald-600">
-                    ≤ {selectedEntry.maxDecimalPlaces} decimals
-                  </p>
-                )}
+            {!selectedEntry ? (
+              <p className="mt-4 text-zinc-500">
+                Finish a run or select one from the history panel to review each prompt.
+              </p>
+            ) : selectedEntry.problemAttempts.length === 0 ? (
+              <p className="mt-4 text-zinc-500">No attempts recorded for this run.</p>
+            ) : (
+              <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-2">
+                {selectedEntry.problemAttempts.map((attempt, index) => {
+                  const stateClasses = attempt.isCorrect
+                    ? "border-emerald-200 bg-emerald-50/80 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-900/20 dark:text-emerald-200"
+                    : "border-rose-200 bg-rose-50/80 text-rose-700 dark:border-rose-500/40 dark:bg-rose-900/20 dark:text-rose-200";
+                  return (
+                    <div
+                      key={`${attempt.prompt}-${index}`}
+                      className={`rounded-2xl border px-4 py-3 transition ${stateClasses}`}
+                    >
+                      <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em]">
+                        <span>{attempt.operation}</span>
+                        <span>{attempt.timeTaken}s</span>
+                      </div>
+                      <p className="mt-1 text-base font-semibold text-zinc-900 dark:text-white">
+                        {attempt.prompt}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                        <span className="font-semibold">
+                          Correct: <span className="font-normal">{attempt.answer}</span>
+                        </span>
+                        <span className="font-semibold">
+                          You:{" "}
+                          <span className="font-normal">
+                            {Number.isNaN(attempt.userAnswer) ? "—" : attempt.userAnswer}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
-          {!selectedEntry ? (
-            <p className="mt-4 text-zinc-500">
-              Finish a run or select one from the history panel to review each prompt.
-            </p>
-          ) : selectedEntry.problemAttempts.length === 0 ? (
-            <p className="mt-4 text-zinc-500">No attempts recorded for this run.</p>
-          ) : (
-            <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-2">
-              {selectedEntry.problemAttempts.map((attempt, index) => {
-                const stateClasses = attempt.isCorrect
-                  ? "border-emerald-200 bg-emerald-50/80 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-900/20 dark:text-emerald-200"
-                  : "border-rose-200 bg-rose-50/80 text-rose-700 dark:border-rose-500/40 dark:bg-rose-900/20 dark:text-rose-200";
-                return (
-                  <div
-                    key={`${attempt.prompt}-${index}`}
-                    className={`rounded-2xl border px-4 py-3 transition ${stateClasses}`}
-                  >
-                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em]">
-                      <span>{attempt.operation}</span>
-                      <span>{attempt.timeTaken}s</span>
-                    </div>
-                    <p className="mt-1 text-base font-semibold text-zinc-900 dark:text-white">
-                      {attempt.prompt}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-3 text-sm">
-                      <span className="font-semibold">
-                        Correct: <span className="font-normal">{attempt.answer}</span>
-                      </span>
-                      <span className="font-semibold">
-                        You:{" "}
-                        <span className="font-normal">
-                          {Number.isNaN(attempt.userAnswer) ? "—" : attempt.userAnswer}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+        </section>
 
-      <section className="space-y-6">
-        <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <div className="space-y-5">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Duration</p>
-              <div className="mt-3 flex gap-2">
-                <div className="flex-1">
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                    Minutes
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={durationMinutes}
-                    onChange={(e) => handleMinutesChange(e.target.value)}
-                    disabled={status === "running"}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                    Seconds
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    value={durationSeconds}
-                    onChange={(e) => handleSecondsChange(e.target.value)}
-                    disabled={status === "running"}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Difficulty</p>
-              <div className="mt-3 grid gap-2">
-                {difficulties.map((diff) => (
-                  <button
-                    key={diff.id}
-                    onClick={() => handleDifficultyChange(diff.id)}
-                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
-                      diff.id === difficulty
-                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
-                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-                    }`}
-                  >
-                    <div>
-                      <p className="font-semibold">{diff.label}</p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">{diff.description}</p>
-                    </div>
-                    <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-                      {diff.min}-{diff.max}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-zinc-500 mb-3">Section</p>
-            <div className="flex gap-2 mb-3 flex-wrap">
-                <button
-                  onClick={() => setActiveTab("operations")}
-                  className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                    activeTab === "operations"
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-                  }`}
-                >
-                  Operations
-                </button>
-                <button
-                  onClick={() => setActiveTab("working-memory")}
-                  className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                    activeTab === "working-memory"
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-                  }`}
-                >
-                  Working Memory
-                </button>
-              <button
-                onClick={() => setActiveTab("fractional")}
-                className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
-                  activeTab === "fractional"
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
-                    : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-                }`}
-              >
-                Fractional
-              </button>
-              </div>
-            {(activeTab === "operations" || activeTab === "fractional") && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  {operationOptions.map((option) => {
-                    const isActive = activeOps.includes(option.id);
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => toggleOperation(option.id)}
-                        className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
-                          isActive
-                            ? "border-emerald-500 bg-emerald-50 text-emerald-600"
-                            : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
-                        }`}
-                      >
-                        <span className="text-lg">{option.symbol}</span> {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {activeTab === "fractional" && (
-                  <div className="mt-3">
+        <section className="space-y-6">
+          <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Duration</p>
+                <div className="mt-3 flex gap-2">
+                  <div className="flex-1">
                     <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                      Max decimal places
+                      Minutes
                     </label>
                     <input
                       type="number"
                       min="0"
-                      value={fractionalMaxDecimals}
-                      onChange={(e) => handleFractionalMaxChange(e.target.value)}
+                      value={durationMinutes}
+                      onChange={(e) => handleMinutesChange(e.target.value)}
                       disabled={status === "running"}
                       className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
                     />
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      Decimals can appear in the prompt or the result.
-                    </p>
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                      Seconds
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={durationSeconds}
+                      onChange={(e) => handleSecondsChange(e.target.value)}
+                      disabled={status === "running"}
+                      className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Difficulty</p>
+                <div className="mt-3 grid gap-2">
+                  {difficulties.map((diff) => (
+                    <button
+                      key={diff.id}
+                      onClick={() => handleDifficultyChange(diff.id)}
+                      className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${diff.id === difficulty
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                        }`}
+                    >
+                      <div>
+                        <p className="font-semibold">{diff.label}</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{diff.description}</p>
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                        {diff.min}-{diff.max}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500 mb-3">Section</p>
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  <button
+                    onClick={() => setActiveTab("operations")}
+                    className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${activeTab === "operations"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      }`}
+                  >
+                    Operations
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("working-memory")}
+                    className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${activeTab === "working-memory"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      }`}
+                  >
+                    Working Memory
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("fractional")}
+                    className={`flex-1 rounded-2xl border px-4 py-2 text-sm font-semibold transition ${activeTab === "fractional"
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-black"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      }`}
+                  >
+                    Fractional
+                  </button>
+                </div>
+                {(activeTab === "operations" || activeTab === "fractional") && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      {operationOptions.map((option) => {
+                        const isActive = activeOps.includes(option.id);
+                        return (
+                          <button
+                            key={option.id}
+                            onClick={() => toggleOperation(option.id)}
+                            className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${isActive
+                              ? "border-emerald-500 bg-emerald-50 text-emerald-600"
+                              : "border-zinc-200 bg-white text-zinc-500 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400"
+                              }`}
+                          >
+                            <span className="text-lg">{option.symbol}</span> {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {activeTab === "fractional" && (
+                      <div className="mt-3">
+                        <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                          Max decimal places
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={fractionalMaxDecimals}
+                          onChange={(e) => handleFractionalMaxChange(e.target.value)}
+                          disabled={status === "running"}
+                          className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                        />
+                        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                          Decimals can appear in the prompt or the result.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+                {activeTab === "working-memory" && (
+                  <div>
+                    <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
+                      Number of operations
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={workingMemoryOps}
+                      onChange={(e) => {
+                        const val = Math.max(1, Math.floor(Number(e.target.value) || 1));
+                        setWorkingMemoryOps(val);
+                        if (status === "idle") {
+                          setProblem(generateWorkingMemoryProblem(val, currentDifficulty));
+                        }
+                      }}
+                      disabled={status === "running"}
+                      className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                    />
                   </div>
                 )}
-              </>
-            )}
-              {activeTab === "working-memory" && (
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-500 dark:text-zinc-400">
-                    Number of operations
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={workingMemoryOps}
-                    onChange={(e) => {
-                      const val = Math.max(1, Math.floor(Number(e.target.value) || 1));
-                      setWorkingMemoryOps(val);
-                      if (status === "idle") {
-                        setProblem(generateWorkingMemoryProblem(val, currentDifficulty));
-                      }
-                    }}
-                    disabled={status === "running"}
-                    className="w-full rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                  />
-                </div>
-              )}
-            </div>
+              </div>
 
-            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
-              <button
-                onClick={() => setShowAdvancedOptions(true)}
-                className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                Advanced Options
-              </button>
+              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <button
+                  onClick={() => setShowAdvancedOptions(true)}
+                  className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
+                >
+                  Advanced Options
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
-          <p className="text-xs uppercase tracking-[0.4em] text-zinc-400">History</p>
-          <h3 className="pb-4 text-xl font-semibold text-zinc-900 dark:text-white">
-            Recent rounds
-          </h3>
-          {history.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              Finish a run to see accuracy, score, and pace highlights.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {history.slice(0, 5).map((entry) => (
-                <li key={entry.id}>
-                  <button
-                    onClick={() => setSelectedEntryId(entry.id)}
-                    className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${
-                      entry.id === selectedEntryId
+          <div className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-lg shadow-zinc-500/5 dark:border-zinc-800 dark:bg-zinc-900/80">
+            <p className="text-xs uppercase tracking-[0.4em] text-zinc-400">History</p>
+            <h3 className="pb-4 text-xl font-semibold text-zinc-900 dark:text-white">
+              Recent rounds
+            </h3>
+            {history.length === 0 ? (
+              <p className="text-sm text-zinc-500">
+                Finish a run to see accuracy, score, and pace highlights.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {history.slice(0, 5).map((entry) => (
+                  <li key={entry.id}>
+                    <button
+                      onClick={() => setSelectedEntryId(entry.id)}
+                      className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-medium transition ${entry.id === selectedEntryId
                         ? "border-emerald-400 bg-emerald-50/70 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-900/30 dark:text-emerald-200"
                         : "border-zinc-100 bg-zinc-50/80 text-zinc-700 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-200 dark:hover:border-zinc-700"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">
-                          {new Date(entry.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                        <p className="text-base font-semibold text-zinc-900 dark:text-white">
-                          {entry.correct} / {entry.attempted} correct
-                        </p>
+                        }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.25em] text-zinc-400">
+                            {new Date(entry.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                          <p className="text-base font-semibold text-zinc-900 dark:text-white">
+                            {entry.correct} / {entry.attempted} correct
+                          </p>
+                        </div>
+                        <div className="text-right text-xs">
+                          <p className="font-semibold text-emerald-600">{entry.score} pts</p>
+                          <p className="text-zinc-500">{Math.round(entry.pace)} /min</p>
+                        </div>
                       </div>
-                      <div className="text-right text-xs">
-                        <p className="font-semibold text-emerald-600">{entry.score} pts</p>
-                        <p className="text-zinc-500">{Math.round(entry.pace)} /min</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-zinc-500">
-                      Accuracy {entry.accuracy}% · {entry.duration}s
-                    </p>
-                    {entry.maxDecimalPlaces > 0 && (
-                      <p className="text-xs font-semibold text-emerald-600">
-                        ≤ {entry.maxDecimalPlaces} decimals
+                      <p className="text-xs text-zinc-500">
+                        Accuracy {entry.accuracy}% · {entry.duration}s
                       </p>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
+                      {entry.maxDecimalPlaces > 0 && (
+                        <p className="text-xs font-semibold text-emerald-600">
+                          ≤ {entry.maxDecimalPlaces} decimals
+                        </p>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
