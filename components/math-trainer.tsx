@@ -13,7 +13,7 @@ type TrainingMode = "operations" | "working-memory" | "fractional";
 
 type Problem = {
   prompt: string;
-  answer: number;
+  answer: Big;
   operation: Operation;
 };
 
@@ -139,13 +139,13 @@ function writeProblem(a: Big, b: Big, operation: string): Problem {
     case "addition": {
       return {
         prompt: `${a} + ${b}`,
-        answer: a + b,
+        answer: a.add(b),
         operation,
       };
     }
     case "subtraction": {
-      const minuend = Big(Math.max(a, b));
-      const subtrahend = Big(Math.min(a, b));
+      const minuend = Big(Math.max(a.toNumber(), b.toNumber()));
+      const subtrahend = Big(Math.min(a.toNumber(), b.toNumber()));
       return {
         prompt: `${minuend} − ${subtrahend}`,
         answer: minuend.minus(subtrahend),
@@ -160,8 +160,8 @@ function writeProblem(a: Big, b: Big, operation: string): Problem {
       };
     }
     case "division": {
-      const divisor = Big(Math.max(1, b));
-      const quotient = Big(Math.max(1, a));
+      const divisor = Big(Math.max(1, b.toNumber()));
+      const quotient = Big(Math.max(1, a.toNumber()));
       const dividend = divisor.times(quotient);
       return {
         prompt: `${dividend} ÷ ${divisor}`,
@@ -178,7 +178,7 @@ function writeProblem(a: Big, b: Big, operation: string): Problem {
       };
     }
     default:
-      return { prompt: "0 + 0", answer: 0, operation: "addition" };
+      return { prompt: "0 + 0", answer: Big(0), operation: "addition" };
   }
 }
 
@@ -199,13 +199,13 @@ function generateWorkingMemoryProblem(
   expression.string = expression.string.slice(1, -1);
   return {
     prompt: expression.string,
-    answer: expression.value,
+    answer: Big(expression.value),
     operation: "addition",
   };
 }
 
-function generateFractionalNumber(maxDecimalPlaces: number, difficulty: (typeof difficulties)[number],): number {
-  var a: Big = null;
+function generateFractionalNumber(maxDecimalPlaces: number, difficulty: (typeof difficulties)[number],): Big {
+  var a: Big | null = null;
   a = new Big(randomInt(difficulty.min, difficulty.max));
   const decA = randomInt(0, maxDecimalPlaces);
 
@@ -491,7 +491,7 @@ export default function MathTrainer() {
       ...prev,
       {
         prompt: problem.prompt,
-        answer: problem.answer,
+        answer: problem.answer.toNumber(),
         userAnswer: answer,
         operation: problem.operation,
         isCorrect,
