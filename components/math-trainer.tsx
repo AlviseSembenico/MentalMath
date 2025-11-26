@@ -243,6 +243,11 @@ const buildProblemForMode = (
   return generateProblem(options.ops, options.difficulty);
 };
 
+const parseNumber = (value: string): number => {
+  const normalized = value.replace(",", ".");
+  return Number(normalized);
+};
+
 export default function MathTrainer() {
   const [durationMinutes, setDurationMinutes] = useState(2);
   const [durationSeconds, setDurationSeconds] = useState(0);
@@ -512,9 +517,9 @@ export default function MathTrainer() {
       autoSubmit &&
       status === "running" &&
       newValue.trim() !== "" &&
-      !Number.isNaN(Number(newValue))
+      !Number.isNaN(parseNumber(newValue))
     ) {
-      const parsed = Number(newValue);
+      const parsed = parseNumber(newValue);
       console.log(Big(parsed), problem, Big(parsed) == problem.answer);
       if (Big(parsed).eq(problem.answer)) {
         submitAnswer(parsed);
@@ -548,9 +553,11 @@ export default function MathTrainer() {
       if (mappedKey) {
         event.preventDefault();
         event.stopPropagation();
-        const newValue = value + mappedKey;
-        setValue(newValue);
-        checkAutoSubmit(newValue);
+        setValue((prev) => {
+          const newValue = prev + mappedKey;
+          checkAutoSubmit(newValue);
+          return newValue;
+        });
         return;
       }
 
@@ -565,7 +572,7 @@ export default function MathTrainer() {
         event.preventDefault();
         event.stopPropagation();
         if (value.trim()) {
-          const parsed = Number(value);
+          const parsed = parseNumber(value);
           if (!Number.isNaN(parsed)) {
             submitAnswer(parsed);
           }
@@ -581,7 +588,7 @@ export default function MathTrainer() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!value.trim()) return;
-    const parsed = Number(value);
+    const parsed = parseNumber(value);
     if (Number.isNaN(parsed)) return;
     submitAnswer(parsed);
   };
@@ -740,8 +747,7 @@ export default function MathTrainer() {
               >
                 <input
                   ref={inputRef}
-                  type="number"
-                  step="any"
+                  type="text"
                   value={value}
                   onChange={(event) => {
                     const newValue = event.target.value;
@@ -750,7 +756,7 @@ export default function MathTrainer() {
                   }}
                   placeholder={status === "running" ? "Type answer" : "Get ready"}
                   disabled={status !== "running"}
-                  inputMode="numeric"
+                  inputMode="decimal"
                   className={`w-full rounded-2xl border px-5 py-4 text-center text-2xl font-semibold text-zinc-900 outline-none transition disabled:cursor-not-allowed disabled:opacity-50 dark:text-white ${feedback === "correct"
                     ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-900/30"
                     : feedback === "wrong"
