@@ -514,16 +514,8 @@ export default function MathTrainer() {
       !Number.isNaN(Number(newValue))
     ) {
       const parsed = Number(newValue);
-      if (activeTab === "fractional" && fractionalMaxDecimals > 0) {
-        const trimmedValue = newValue.trim();
-        const decimalIndex = trimmedValue.indexOf(".");
-        const inputDecimals = decimalIndex === -1 ? 0 : trimmedValue.length - decimalIndex - 1;
-        const answerDecimals = countDecimalPlaces(problem.answer);
-        if (answerDecimals === fractionalMaxDecimals && inputDecimals !== answerDecimals) {
-          return;
-        }
-      }
-      if (compareAnswers(parsed, problem.answer)) {
+      console.log(parsed, problem);
+      if (parsed === problem.answer) {
         submitAnswer(parsed);
       }
     }
