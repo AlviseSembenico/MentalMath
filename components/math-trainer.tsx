@@ -3,6 +3,8 @@
 import { fetchHistory, saveHistoryEntry } from "@/manage/history";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import Big from "big.js";
+
 type Operation = "addition" | "subtraction" | "multiplication" | "division" | "square";
 
 type DifficultyId = "sparks" | "balanced" | "insane";
@@ -132,7 +134,7 @@ function generateExpression(
 
 
 
-function writeProblem(a: number, b: number, operation: string): Problem {
+function writeProblem(a: Big, b: Big, operation: string): Problem {
   switch (operation) {
     case "addition": {
       return {
@@ -142,25 +144,25 @@ function writeProblem(a: number, b: number, operation: string): Problem {
       };
     }
     case "subtraction": {
-      const minuend = Math.max(a, b);
-      const subtrahend = Math.min(a, b);
+      const minuend = Big(Math.max(a, b));
+      const subtrahend = Big(Math.min(a, b));
       return {
         prompt: `${minuend} − ${subtrahend}`,
-        answer: minuend - subtrahend,
+        answer: minuend.minus(subtrahend),
         operation,
       };
     }
     case "multiplication": {
       return {
         prompt: `${a} × ${b}`,
-        answer: a * b,
+        answer: a.times(b),
         operation,
       };
     }
     case "division": {
-      const divisor = Math.max(1, b);
-      const quotient = Math.max(1, a);
-      const dividend = divisor * quotient;
+      const divisor = Big(Math.max(1, b));
+      const quotient = Big(Math.max(1, a));
+      const dividend = divisor.times(quotient);
       return {
         prompt: `${dividend} ÷ ${divisor}`,
         answer: quotient,
@@ -171,7 +173,7 @@ function writeProblem(a: number, b: number, operation: string): Problem {
       const base = a;
       return {
         prompt: `${base}²`,
-        answer: base * base,
+        answer: base.times(base),
         operation,
       };
     }
@@ -185,7 +187,7 @@ function generateProblem(ops: Operation[], difficulty: (typeof difficulties)[num
   const a = randomInt(difficulty.min, difficulty.max);
   const b = randomInt(difficulty.min, difficulty.max);
 
-  return writeProblem(a, b, operation);
+  return writeProblem(Big(a), Big(b), operation);
 
 }
 
@@ -203,12 +205,11 @@ function generateWorkingMemoryProblem(
 }
 
 function generateFractionalNumber(maxDecimalPlaces: number, difficulty: (typeof difficulties)[number],): number {
-  var a = null;
-  while (a == null || a.toString().length > 2 * difficulty.max.toString().length + 1) {
-    a = randomInt(difficulty.min, difficulty.max);
-    const decA = randomInt(0, maxDecimalPlaces);
-    a /= 10 ** decA;
-  }
+  var a: Big = null;
+  a = new Big(randomInt(difficulty.min, difficulty.max));
+  const decA = randomInt(0, maxDecimalPlaces);
+
+  a = a.div(Big(10).pow(decA));
   return a;
 }
 
@@ -473,7 +474,7 @@ export default function MathTrainer() {
 
 
   const submitAnswer = (answer: number) => {
-    const isCorrect = answer == problem.answer;
+    const isCorrect = Big(answer).eq(problem.answer);
     setAttempted((prev) => prev + 1);
     if (isCorrect) {
       setCorrect((prev) => prev + 1);
@@ -514,8 +515,8 @@ export default function MathTrainer() {
       !Number.isNaN(Number(newValue))
     ) {
       const parsed = Number(newValue);
-      console.log(parsed, problem);
-      if (parsed === problem.answer) {
+      console.log(Big(parsed), problem, Big(parsed) == problem.answer);
+      if (Big(parsed).eq(problem.answer)) {
         submitAnswer(parsed);
       }
     }
